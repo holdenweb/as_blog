@@ -1,0 +1,6 @@
+credentials.json
+token.json
+token.pickle
+venv/
+wing_project.*
+__pycache__
