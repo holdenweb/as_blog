@@ -1,3 +1,4 @@
+import json
 import pickle
 import os.path
 from googleapiclient.discovery import build
@@ -10,57 +11,78 @@ SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
 # The ID of a sample document.
 DOCUMENT_ID = '1jALRWW76qjrcl12e-umDm-ZbGlm8HcGuaA2jGdl1Zro'
 
+content_file = open("context.txt", "w")
+
 class MyDoc():
     """
     This is a general framework to handle Google documents, allowing their
     processing into blog entries in a relatively automated way.
     """
-    def parse(self, parseable, container='document', containing_part_name='Unidentifed', part_names=None):
+    def parse(self, element, element_name, item_names, ancestors):
         """
-        General parser for any parseable object_dict, whose parts are handled in the
-        order their names appear in part_names. At present unrecognised part names
-        are reported and skipped from the parse. This may become tedious as we descend
-        down the heirachy in top-down fashion.
+        Parses the given document element by recursively parsing
+        the content of each item.
         """
-        print("Parsing", ", ".join(part_names), "in", containing_part_name)
-        for part_name in part_names:
-            if not container or part_name in container:
-                print(f"Found {part_name}")
-                method = getattr(self, f"parse_{part_name}", self.parse_unrecognised_part_name)
-                part = parseable.get(part_name)
-                print("Attempting to handle", part_name)
-                method(parseable, part_name, part, containing_part_name=containing_part_name)
+        print(f"Parsing", ".".join(ancestors+[element_name]))
+        for item_name in item_names:
+            if item_name in element:
+                method = getattr(self, f"parse_{item_name}", self.parse_unrecognised_part_name)
+                item = element[item_name]
+                print("Handling", ".".join(ancestors+[element_name, item_name]))
+                method(element=item, element_name=item_name, ancestors=ancestors+[element_name])
+        print(f"Parse of", ".".join(ancestors+[element_name]), 'complete')
 
-    def parse_body(self, content, part_name, body, containing_part_name="document"):
-        part_names = ('content', )
-        return self.parse(body, container=content, part_names=part_names, containing_part_name='body')
+    def parse_body(self, element, element_name, ancestors):
+        item_names = ('content', )
+        return self.parse(element, element_name='content', item_names=item_names, ancestors=ancestors)
 
-    def parse_content(self, body, elements, containing_part_name="body"):
+    def parse_content(self, element, element_name, ancestors):
         """
         elements is a sequence of structuralElement objects, some of which should
         be parsed to access publishable content.
         """
-        print("Content elements count:", len(elements))
-        for element in elements:
-            self.parse_structural_element(body, 'structuralElement', element, containing_part_name="content")
+        print("Content elements count:", len(element))
+        for item in element:
+            self.parse_structuralElement(item, 'structuralElement', ancestors=ancestors)
 
-    def parse_document(self, document, containing_part_name="document"):
-        part_names = ('title', 'body', 'footnotes', 'documentStyle', 'namedStyles',
+    def parse_document(self, element, ancestors=[]):
+        item_names = ('title', 'body', 'footnotes', 'documentStyle', 'namedStyles',
                       'revisionId', 'suggestionsViewMode', 'documentId')
-        return self.parse(document, part_names=part_names, containing_part_name=containing_part_name)
+        return self.parse(element=element, element_name="document", item_names=item_names, ancestors=ancestors)
 
-    def parse_sectionBreak(self, paragraph, part, containing_part_name= None):
-        print("sectionBreak:", part)
+    def parse_documentId(self, element, element_name, ancestors):
+        self.documentId = element
 
-    def parse_structural_element(self, container, part, containing_part_name=None):
+    def parse_elements(self, element, element_name, ancestors):
+        for item in element:
+            self.parse_element(item, 'paragraphElement', ancestors)
+
+    def parse_element(self, element, element_name, ancestors):
+        item_names = ('textRun', 'autoText', 'pageBreak', 'columnBreak', 'footnoteReference', 'horizontalRule', 'equation', 'inlineOPbnjectElement')
+        self.parse(element, element_name, item_names, ancestors)
+
+    def parse_paragraph(self, element, element_name, ancestors):
+        item_names = ('paragraphStyle', 'bullet', 'elements')
+        return self.parse(element, element_name, item_names, ancestors)
+
+    def parse_sectionBreak(self, element, element_name, ancestors):
+        print("sectionBreak:", element)
+
+    def parse_structuralElement(self, element, element_name, ancestors):
         part_names = ('sectionBreak', 'tableOfContents', 'table', 'paragraph')
-        return self.parse(container, element, 'structuralElement', part_names=part_names)
+        return self.parse(element, element_name='structuralElement', item_names=part_names, ancestors=ancestors)
 
-    def parse_title(self, document, part_name, title, containing_part_name='document'):
-        self.title = document.get('title')
+    def parse_textRun(self, element, element_name, ancestors):
+        print(element['content'], file=content_file, end="|")
+        style = element.get('textStyle', "DEFAULT")
+        print("Style:", style if style else "EMPTY STYLE")
 
-    def parse_unrecognised_part_name(self, container, part_name, part, containing_part_name="Not provided"):
-        print(f"Cannot handle {part_name} in {containing_part_name}")
+    def parse_title(self, element, element_name, ancestors):
+        self.title = element
+        print(".".join(ancestors+[element_name]), "is", element)
+
+    def parse_unrecognised_part_name(self, element, element_name, ancestors):
+        print("Didn't handle", '.'.join(ancestors+[element_name]))
 
 
 def main():
@@ -91,11 +113,14 @@ def main():
 
     # Retrieve the documents contents from the Docs service.
     document = service.documents().get(documentId=DOCUMENT_ID).execute()
+    with open(f"{DOCUMENT_ID}.json", "w") as fp:
+        json.dump(document, fp)
     parser = MyDoc()
-    parser.parse_document(document)
+    parser.parse_document(element=document, ancestors=[])
 
     print(f'The title of document {DOCUMENT_ID} is: {document.get("title")!r}')
     print(f'  The parser says:', parser.title)
+    print(f'                  ', parser.documentId)
 
 
 if __name__ == '__main__':
