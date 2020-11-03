@@ -8,16 +8,21 @@ from google.auth.transport.requests import Request
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
 
+#
+# Next steps: add paragraphStyle handler to action formatting
+# changes, and paragraphElement.footnoteReference handler to
+# ensure that the footnotes are included.
+#
 # The ID of a sample document.
 DOCUMENT_ID = '1jALRWW76qjrcl12e-umDm-ZbGlm8HcGuaA2jGdl1Zro'
-
-content_file = open("context.txt", "w")
 
 class MyDoc():
     """
     This is a general framework to handle Google documents, allowing their
     processing into blog entries in a relatively automated way.
     """
+    def __init__(self):
+        self.content = []
     def parse(self, element, element_name, item_names, ancestors):
         """
         Parses the given document element by recursively parsing
@@ -59,6 +64,7 @@ class MyDoc():
 
     def parse_element(self, element, element_name, ancestors):
         item_names = ('textRun', 'autoText', 'pageBreak', 'columnBreak', 'footnoteReference', 'horizontalRule', 'equation', 'inlineOPbnjectElement')
+        print(f"Range: {element['startIndex']}-{element['endIndex']}")
         self.parse(element, element_name, item_names, ancestors)
 
     def parse_paragraph(self, element, element_name, ancestors):
@@ -73,8 +79,9 @@ class MyDoc():
         return self.parse(element, element_name='structuralElement', item_names=part_names, ancestors=ancestors)
 
     def parse_textRun(self, element, element_name, ancestors):
-        print(element['content'], file=content_file, end="|")
-        style = element.get('textStyle', "DEFAULT")
+        print(element['content'], end="|")
+        self.content.append((element.get('textStyle', "NO STYLE"), element['content']))
+        style = element.get('textStyle', "NO STYLE")
         print("Style:", style if style else "EMPTY STYLE")
 
     def parse_title(self, element, element_name, ancestors):
@@ -121,6 +128,16 @@ def main():
     print(f'The title of document {DOCUMENT_ID} is: {document.get("title")!r}')
     print(f'  The parser says:', parser.title)
     print(f'                  ', parser.documentId)
+
+    from itertools import groupby
+    current_style = None
+    ci = iter(parser.content)
+    for style, para in ci:
+        if style != current_style:
+            current_style = style
+            print(f"\n:::::::: Style: {style} ::::::::")
+        print(para, sep="", end='')
+
 
 
 if __name__ == '__main__':
