@@ -31,6 +31,16 @@ style_types = {
         "shading"
     ),
     'text': (
+        "bold",
+        "italic",
+        "underline",
+        "strikethrough",
+        "smallCaps",
+        "backgroundColor",
+        "foregroundColor",
+        "weightedFontFamily",
+        "baselineOffset",
+        "link"
     )
 }
 
