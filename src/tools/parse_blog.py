@@ -1,6 +1,8 @@
 import json
 import pickle
 import os.path
+
+from styles import StyleStack
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -16,6 +18,13 @@ SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
 # The ID of a sample document.
 DOCUMENT_ID = '1jALRWW76qjrcl12e-umDm-ZbGlm8HcGuaA2jGdl1Zro'
 
+rprint = print
+
+def print(*args, **kw):
+    return
+    return rprint(*args, **kw)
+
+
 class MyDoc():
     """
     This is a general framework to handle Google documents, allowing their
@@ -23,6 +32,9 @@ class MyDoc():
     """
     def __init__(self):
         self.content = []
+        self.p_styles = StyleStack('paragraph')
+        self.t_styles = StyleStack('text')
+
     def parse(self, element, element_name, item_names, ancestors):
         """
         Parses the given document element by recursively parsing
@@ -70,6 +82,14 @@ class MyDoc():
     def parse_paragraph(self, element, element_name, ancestors):
         item_names = ('paragraphStyle', 'bullet', 'elements')
         return self.parse(element, element_name, item_names, ancestors)
+
+    def parse_paragraphStyle(self, element, element_name, ancestors):
+        self.p_styles.push(element)
+        rprint(f"Pushed {element_name} {element!r}")
+        rprint("Style now:")
+        for key, value in sorted(self.p_styles.to_dict().items()):
+            print(f"{key!r}: {value!r}")
+        assert self.p_styles.pop() == element
 
     def parse_sectionBreak(self, element, element_name, ancestors):
         print("sectionBreak:", element)
