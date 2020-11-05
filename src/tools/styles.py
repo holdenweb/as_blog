@@ -7,48 +7,48 @@ stack, effectively emulating
 """
 
 style_types = {
-    'paragraph': (
-        "headingId",
-        "namedStyleType",
-        "alignment",
-        "lineSpacing",
-        "direction",
-        "spacingMode",
-        "spaceAbove",
-        "spaceBelow",
-        "borderBetween",
-        "borderTop",
-        "borderBottom",
-        "borderLeft",
-        "borderRight",
-        "indentFirstLine",
-        "indentStart",
-        "indentEnd",
-        "tabStops",
-        "keepLinesTogether",
-        "keepWithNext",
-        "avoidWidowAndOrphan",
-        "shading"
-    ),
-    'text': (
-        "bold",
-        "italic",
-        "underline",
-        "strikethrough",
-        "smallCaps",
-        "backgroundColor",
-        "foregroundColor",
-        "weightedFontFamily",
-        "baselineOffset",
-        "link"
-    )
+    'paragraph': {
+        'headingId': None,
+        'namedStyleType': None,
+        'alignment': None,
+        'lineSpacing': None,
+        'direction': None,
+        'spacingMode': None,
+        'spaceAbove': None,
+        'spaceBelow': None,
+        'borderBetween': None,
+        'borderTop': None,
+        'borderBottom': None,
+        'borderLeft': None,
+        'borderRight': None,
+        'indentFirstLine': None,
+        'indentStart': None,
+        'indentEnd': None,
+        'tabStops': None,
+        'keepLinesTogether': None,
+        'keepWithNext': None,
+        'avoidWidowAndOrphan': None,
+        'shading': None,
+    },
+    'text': {
+        'bold': None,
+        'italic': None,
+        'underline': None,
+        'strikethrough': None,
+        'smallCaps': None,
+        'backgroundColor': None,
+        'foregroundColor': None,
+        'weightedFontFamily': None,
+        'baselineOffset': None,
+        'link': None,
+    },
 }
 
-class StyleStack:
 
+class StyleStack:
     def __init__(self, style_type='paragraph', level=-1):
-        self.style_types = style_types[style_type]
-        self.stack = [{s: None for s in self.style_types}]
+        self.style_types = style_types[style_type].copy()
+        self.stack = [self.style_types]
 
     def push(self, style=None):
         if style is None:
