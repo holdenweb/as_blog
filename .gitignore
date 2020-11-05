@@ -2,5 +2,5 @@ credentials.json
 token.json
 token.pickle
 venv/
-wing_project.*
+*.wp?
 __pycache__
