@@ -28,56 +28,106 @@ class DocParser:
         self.t_styles = StyleStack("text")
 
 
+def element_type(se):
+    residuals = se.keys() - {"startIndex", "endIndex"}
+    assert len(residuals) == 1, "Unexpected key in structuralElement :{!r}".format(
+        sorted(se.keys())
+    )
+    return residuals.pop()
+
+
+def handle_textRun(tr):
+    print(tr.content, end="")
+
+
+def handle_footnoteReference(fnr):
+    print(f"[{fnr.footnoteNumber}]", end="")
+
+
+def handle_paragraph(p):
+    """
+    A paragraph is a sequence of paragraphElements.
+    """
+    for pe in p.elements:
+        handle_paragraphElement(pe)
+
+
+class HandleAnyOf:
+    """
+    Proxy the appropriate instance handler for
+    one of the established sub-elements.
+    """
+
+    def __init__(self, elements):
+        self.sub_elements = elements
+
+    def __call__(self, element):
+        et = element_type(element)
+        if et in self.sub_elements:
+            self.sub_elements[et](element[et])
+        # At present we do nothing about unhandled sub-elements.
+
+
+class HandleEachOf(HandleAnyOf):
+    """
+    Process an established sequence of sub-elements.
+    """
+
+    def __call__(self, element):
+        for element_name, handler in self.sub_elements.items():
+            handler(element[element_name])
+
+
+class HandleSequenceOf:
+    """
+    Handle a list of a given element type.
+    """
+
+    def __init__(self, handler):
+        self.handler = handler
+
+    def __call__(self, element):
+        for sub_element in element:
+            self.handler(sub_element)
+
+
+se_handlers = {"paragraph": handle_paragraph}
+handle_structuralElement = HandleAnyOf(se_handlers)
+
+handle_content = HandleSequenceOf(handle_structuralElement)
+
+body_handlers = {"content": handle_content}
+handle_body = HandleEachOf(body_handlers)
+
+pe_handlers = {"textRun": handle_textRun, "footnoteReference": handle_footnoteReference}
+
+doc_handlers = {
+    # "documentStyle",
+    # "lists",
+    # "namedStyles",
+    # "namedRanges",
+    # "inlineObjects",
+    # "headers",
+    # "footers",
+    # "footnotes,"
+    "body": handle_body
+}
+
+handle_document = HandleEachOf(doc_handlers)
+handle_paragraphElement = HandleAnyOf(pe_handlers)
+
+
 def main(document_id: str):
     """
     Process a Google docs document into a blog entry.
     """
-
-    def element_type(se):
-        residuals = se.keys() - {"startIndex", "endIndex"}
-        assert len(residuals) == 1, "Unexpected key in structuralElement :{!r}".format(
-            sorted(se.keys())
-        )
-        return residuals.pop()
-
-    def handle_textRun(tr):
-        print(tr.content)
-
-    def handle_footnoteReference(fnr):
-        print(f"[{fnr.footnoteNumber}]", end="")
-
-    def handle_paragraph(p):
-        """
-        A paragraph is a sequence of paragraphElements.
-        """
-        for pe in p.elements:
-            handle_paragraphElement(pe)
-
-    class HandlesAnyOf:
-        def __init__(self, elements):
-            self.elements = elements
-
-        def __call__(self, element):
-            et = element_type(element)
-            if et in self.elements:
-                self.elements[et](element[et])
-
-    pe_handlers = {
-        "textRun": handle_textRun,
-        "footnoteReference": handle_footnoteReference,
-    }
-
-    se_handlers = {"paragraph": handle_paragraph}
-
-    handle_structuralElement = HandlesAnyOf(se_handlers)
-    handle_paragraphElement = HandlesAnyOf(pe_handlers)
-
     df = DocsFile(document_id).open()
     document = json.loads(df.read())
     document = ObjectDict(document)
     # named_styles = {x.namedStyleType: x for x in document.namedStyles.styles}
-    for se in document.body.content:
-        handle_structuralElement(se)
+    # for se in document.body.content:
+    # handle_structuralElement(se)
+    handle_document(document)
 
 
 if __name__ == "__main__":
