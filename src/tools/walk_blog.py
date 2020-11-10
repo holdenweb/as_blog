@@ -34,22 +34,17 @@ def main(document_id: str):
     """
 
     def element_type(se):
-        residuals = set(se.keys()) - {"startIndex", "endIndex"}
+        residuals = se.keys() - {"startIndex", "endIndex"}
         assert len(residuals) == 1, "Unexpected key in structuralElement :{!r}".format(
             sorted(se.keys())
         )
-        return list(residuals)[0]
+        return residuals.pop()
 
     def handle_textRun(tr):
         print(tr.content)
 
     def handle_footnoteReference(fnr):
         print(f"[{fnr.footnoteNumber}]", end="")
-
-    pe_handlers = {
-        "textRun": handle_textRun,
-        "footnoteReference": handle_footnoteReference,
-    }
 
     def handle_paragraph(p):
         """
@@ -58,34 +53,29 @@ def main(document_id: str):
         for pe in p.elements:
             handle_paragraphElement(pe)
 
+    class HandlesAnyOf:
+        def __init__(self, elements):
+            self.elements = elements
+
+        def __call__(self, element):
+            et = element_type(element)
+            if et in self.elements:
+                self.elements[et](element[et])
+
+    pe_handlers = {
+        "textRun": handle_textRun,
+        "footnoteReference": handle_footnoteReference,
+    }
+
     se_handlers = {"paragraph": handle_paragraph}
 
-    def handle_structuralElement(e):
-        et = element_type(e)
-        handler = se_handlers.get(et)
-        if handler:
-            handler(e[et])
-
-    def handles(handlers):
-        def decorator(f):
-            def handle_element(element):
-                et = element_type(element)
-                handler = handlers.get(et)
-                if handler:
-                    handler(element[et])
-
-            return handle_element
-
-        return decorator
-
-    @handles(pe_handlers)
-    def handle_paragraphElement(element):
-        pass
+    handle_structuralElement = HandlesAnyOf(se_handlers)
+    handle_paragraphElement = HandlesAnyOf(pe_handlers)
 
     df = DocsFile(document_id).open()
     document = json.loads(df.read())
     document = ObjectDict(document)
-    named_styles = {x.namedStyleType: x for x in document.namedStyles.styles}
+    # named_styles = {x.namedStyleType: x for x in document.namedStyles.styles}
     for se in document.body.content:
         handle_structuralElement(se)
 
