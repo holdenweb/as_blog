@@ -2,10 +2,36 @@
 Process a document into publishable blog format.
 """
 import json
+import re
 import sys
+import unicodedata
 
 from docs import DocsFile
 from hu import ObjectDict
+
+
+_slugify_strip_re = re.compile(r"[^\w\s-]")
+_slugify_hyphenate_re = re.compile(r"[-\s]+")
+
+
+def slugify(value):
+    """
+    Normalizes string, converts to lowercase, removes non-alpha characters,
+    and converts spaces to hyphens.
+
+    From Django's "django/template/defaultfilters.py".
+    """
+    if not isinstance(value, str):
+        value = str(value)
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore")
+    value = str(_slugify_strip_re.sub("", value).strip().lower())
+    return _slugify_hyphenate_re.sub("-", value)
+
+
+def _slugify(string):
+    if not string:
+        return ""
+    return slugify(string)
 
 
 def element_type(se):
@@ -17,8 +43,6 @@ def element_type(se):
 
 
 def handle_textRun(tr):
-    # print(tr.textStyle)
-    # print(tr.content, end="")
     pass
 
 
@@ -128,20 +152,21 @@ def render_code_chunk(chunk):
     result = f"""\
 <pre>
   <code>
-{sep.join(chunk)}
+{sep.join(chunk).strip()}
   </code>
 </pre>
 """
     print(result)
 
 
-def render_textRuns(p):
+def render_content(p):
     """
-    Render the textRuns from a paragraph.
+    Render the textRuns and footnoteReferences from a paragraph.
     """
     c_list = []
     for element in p.elements:
-        if element_type(element) == "textRun":
+        e_type = element_type(element)
+        if e_type == "textRun":
             style = element.textRun.textStyle
             content = element.textRun.content
             if "bold" in style and style.bold:
@@ -149,13 +174,18 @@ def render_textRuns(p):
             if "italic" in style and style.italic:
                 content = f"<i>{content}</i>"
             c_list.append(content)
+        elif e_type == "footnoteReference":
+            e = element.footnoteReference
+            c_list.append(
+                f"""<a href=#footnote-{e.footnoteNumber}">[{e.footnoteNumber}]</a>"""
+            )
     return "".join(c_list)
 
 
 def render_normal_text(p):
     result = f"""\
 <p class="normal_text">
-{render_textRuns(p)}
+{render_content(p)}
 </p>
 """
     print(result)
@@ -163,23 +193,24 @@ def render_normal_text(p):
 
 def render_heading_2(p):
     result = f"""\
-<h2 class="normal_text">{render_textRuns(p)}</h2>"""
+<h2 class="normal_text">{render_content(p)}</h2>"""
     print(result)
 
 
 renderer = {"NORMAL_TEXT": render_normal_text, "HEADING_2": render_heading_2}
 
 
-def main(document_id: str):
+def main(args=sys.argv):
     """
     Process a Google docs document into a blog entry.
     """
+    document_id: str = args[1]
     df = DocsFile(document_id).open()
     document = json.loads(df.read())
     document = ObjectDict(document)
     # named_styles = {x.namedStyleType: x for x in document.namedStyles.styles}
     # print(f"{len(named_styles)} named styles: {', '.join(sorted(named_styles.keys()))}")
-    handle_content(document.body.content)
+    # handle_content(document.body.content)
     # print("Done")
     # content = document.body.content
     paragraph_stream = paras(document)
@@ -191,16 +222,19 @@ def main(document_id: str):
         # into a chunk, which becomes a single paragraph.
         #
         if p_type == "code":
-            chunk.append(para.elements[0].textRun.content)
+            chunk.append(elements[0].textRun.content)
         #
         # Other paragraph types are rendered as an appropriate
         # HTML element as set in a lookup table. Rendering can
         # then be performed on the paragraphs' textRun elements.
         #
         else:
-            if chunk:
+            if chunk:  # Emit any accumulated chunk
                 render_code_chunk(chunk)
                 chunk = []
+            # Outside a code chunk ignore blank paras
+            if len(elements) == 1 and elements[0].textRun.content == "\n":
+                continue
             renderer[p_type](para)  # call handler selected by type
         # Handle edge case where post ends with a code sequence.
     else:
@@ -208,11 +242,13 @@ def main(document_id: str):
             render_code_chunk(chunk)
             chunk = []
 
-    # for chunk in chunks(document):
-    # print("=== CODE CHUNK ===")
-    # for para in chunk:
-    # print(para_type(para)[0])
+
+def load(args=sys.argv):
+    save_stdout = sys.stdout
+    sys.stdout = open(f"/Users/sholden/.docs_cache/html/{sys.argv[1]}.html", "w")
+    main(args)
+    sys.stdout = save_stdout
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main()
