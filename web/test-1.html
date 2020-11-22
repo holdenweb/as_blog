@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+
+<p class="normal_text">
+In the previous installment, we showed how the <i>separation of concerns</i> (having each function perform exactly one task) helps even in the simplest case—when every sub-task is purely one of computation. Here, we look at an example where the need for separation is even more definite: we also need to present the calculation’s result to the user.
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+To summarize the previous installment, we need a function to compute the total sum due for a collection of items. Each item is an instance of a dataclass:
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<pre>
+# snippet sep-concerns2-1
+from dataclasses import dataclass
+from decimal import Decimal
+
+@dataclass
+class PurchasedItem:
+    name: str
+    category: str
+    unit_price: Decimal
+    units: int = 0
+
+example_items = [
+    PurchasedItem('Bordeaux', 'wine', Decimal('21.12'), 6),
+    PurchasedItem('Viognier', 'wine', Decimal('23.99'), 6)
+]
+
+</pre>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+The total price computed must include sales tax, which defaults to 6% but can vary depending on an item’s category; details of specially-taxed categories are in a dict, such as:
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<pre>
+# snippet sep-concerns2-2
+SALES_TAX_PERCENT = {
+  'beer': 8,
+  'wine': 10,
+  'spirits': 13,
+  'staples': 0,
+}
+
+
+</pre>
+
+<p class="normal_text">
+The previous installment showed that separating the tax calculation from the line price calculation made the code easier to test and re-use.
+
+</p>
+
+<h2 class="normal_text">Adding a presentation requirement
+</h2>
+<p class="normal_text">
+The customer who gave us the original specification would be quite happy with either solution. Customers don't generally care if the code is readable, testable, or maintainable—although they will, in the future, if and when testing or changes are required—but at first, they don't even <i>look</i> inside the code we have written!).
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+However, the customer now adds the requirement that our program must also print an invoice, showing details for each item and the total. Such af change would not be surprising to anybody who has ever developed software in the real world: customer are always adding requirements, and changing existing ones, during a project's development.
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+The initial requirements, precisely specified before starting to design and code, can change for all kinds of reasons. The customer, during the development of a program meeting all agreed requirements, nevertheless demands changes.  Separation of concerns helps deal with such multiple-round development processes!
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+A little "discovery work" confirms that we just need to emit the invoice lines of text to the "standard output"—stdout, the stream to which the print function, by default, sends output. The program will run in environments where other subsystems take the program's stdout and puts it on screen, email, or paper, as required.
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+Now, if we had originally solved the problem without separation of concerns (i.e., all subtasks were performed within a single function), we might refactor that function into something like…:
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<pre>
+# snippet sep-concerns2-3
+def total_sum4(items: List[PurchasedItem]) -> None:
+    """By-line output item prices with sales tax, then total. For example:
+    >>> total_sum4(example_items)
+    6  Bordeaux         (wine            ) 10% 21.12 266.11
+    6  Viognier         (wine            ) 10% 23.99 302.27
+    Total: 568.39
+    """
+    item_prices = []
+    for it in items:
+        total_price = it.unit_price * it.units
+        sales_tax_percent = SALES_TAX_PERCENT.get(it.category, 6)
+        sales_tax = total_price * Decimal(1 + sales_tax_percent/100)
+        line = (f'{it.units:<2d} {it.name:<16s} ({it.category:<16s}) '
+                f'{sales_tax_percent:<2d}% {it.unit_price:4<.2f} '
+                f'{(total_price+sales_tax):4<.2f}'
+               )
+        print(line)
+        item_prices.append(total_price+sales_tax)
+    total = sum(item_prices)
+    print(f'Total: {total:5<.2f}')
+
+
+</pre>
+
+<p class="normal_text">
+Now, it seems we have satisfied the requirements. However, when we show the result to our customer, we find out that they want the total to appear <i>first</i>, followed by the line items. Adapting our one-function-does-all code to this new requirement, which forbids the “print as you go” approach we had slipped into, is a little daunting.
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+Working from the properly-separated code we showed at the end of the previous installment, however, offers a simpler alternative:
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+<pre>
+# snippet sep-concerns2-4
+
+@dataclass
+class LineItem:
+    it: PurchasedItem
+    net_price: Decimal = 0
+    tax_percent: Decimal = 0
+
+    @property
+    def sales_tax(self) -> Decimal:
+        return self.net_price * Decimal(1 + self.tax_percent/100)
+    
+    @property
+    def total_price(self) -> Decimal:
+        return self.net_price + self.sales_tax
+
+def add_net_price(item: PurchasedItem) -> LineItem:
+  """Price of a single item, net of tax. For example:
+  >>> print(net_price(example_items[0]))
+  126.72
+  """
+  return LineItem(it=item, net_price=item.unit_price*item.units)
+
+def add_tax_percent(item: LineItem) -> None:
+  """Price of a single item, including sales tax. For example:
+  >>> print(post_tax_price(example_items[0], net_price(example_items[0])))
+  139.392
+  """
+  item.tax_percent = Decimal(SALES_TAX_PERCENT.get(item.it.category, 6))
+
+def total_sum5(items: List[PurchasedItem]) -> None:
+  """Sum of total item prices with sales tax. For example:
+  >>> print(total_sum3(example_items))
+  297.726
+  """
+  line_items = [add_net_price(it) for it in items]
+  for it in line_items:
+      add_tax_percent(it)
+  total = sum(it.total_price for it in line_items)
+  print(f'Total: {total:5<.2f}')
+  for it in line_items:
+    line = (f'{it.it.units:<2d} {it.it.name:<16s} ({it.it.category:<16s}) '
+            f'{it.tax_percent:<2d}% {it.it.unit_price:4<.2f} '
+            f'{(it.total_price):4<.2f}'
+           )
+    print(line)
+
+</pre>
+
+<p class="normal_text">
+
+
+</p>
+
+<p class="normal_text">
+And I added this paragraph because there’s a bug in my code detection logic
+
+</p>
+
+<p class="normal_text">
+
+
+</p>
+
+
+    </body>
+</html>
+
