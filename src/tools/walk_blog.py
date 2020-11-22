@@ -9,6 +9,7 @@ import unicodedata
 from docs import DocsFile
 from hu import ObjectDict
 
+footnote_map = {}
 
 _slugify_strip_re = re.compile(r"[^\w\s-]")
 _slugify_hyphenate_re = re.compile(r"[-\s]+")
@@ -47,11 +48,21 @@ def handle_textRun(tr):
 
 
 def handle_footnoteReference(fnr):
+    """
+    Besides rendering a link to the footnote in the body of the output,
+    we must also remember the footnoteId against the footnoteNumber, in
+    order to be able to produce the actual footnote contents once the
+    whole document body has been parsed.
+
+    A simple implementation has been chosen initially, which ignores
+    the textStyle in the reference. It uses a global footnote_map table
+    to store these references.
+    """
     print(
         f"""<a href=#footnote-{fnr.footnoteNumber}">[{fnr.footnoteNumber}]</a>""",
         end="",
     )
-    pass
+    footnote_map[fnr.footnoteNumber] = fnr.footnoteId
 
 
 def handle_paragraph(p):
@@ -115,8 +126,8 @@ pe_handlers = {"textRun": handle_textRun, "footnoteReference": handle_footnoteRe
 handle_paragraphElement = AnyOf(pe_handlers)
 
 
-def paras(document):
-    for element in document.body.content:
+def paragraphs_from(content):
+    for element in content:
         if element_type(element) == "paragraph":
             yield element.paragraph
 
@@ -159,7 +170,7 @@ def render_code_chunk(chunk):
     print(result)
 
 
-def render_content(p):
+def render_structuralElements(p):
     """
     Render the textRuns and footnoteReferences from a paragraph.
     """
@@ -175,17 +186,18 @@ def render_content(p):
                 content = f"<i>{content}</i>"
             c_list.append(content)
         elif e_type == "footnoteReference":
-            e = element.footnoteReference
+            fnr = element.footnoteReference
             c_list.append(
-                f"""<a href=#footnote-{e.footnoteNumber}">[{e.footnoteNumber}]</a>"""
+                f"""<a href="#footnote-{fnr.footnoteNumber}">[{fnr.footnoteNumber}]</a>"""
             )
+            footnote_map[fnr.footnoteNumber] = fnr.footnoteId
     return "".join(c_list)
 
 
 def render_normal_text(p):
     result = f"""\
 <p class="normal_text">
-{render_content(p)}
+{render_structuralElements(p)}
 </p>
 """
     print(result)
@@ -193,33 +205,21 @@ def render_normal_text(p):
 
 def render_heading_2(p):
     result = f"""\
-<h2 class="normal_text">{render_content(p)}</h2>"""
+<h2 class="normal_text">{render_structuralElements(p)}</h2>"""
     print(result)
 
 
 renderer = {"NORMAL_TEXT": render_normal_text, "HEADING_2": render_heading_2}
 
 
-def main(args=sys.argv):
-    """
-    Process a Google docs document into a blog entry.
-    """
-    document_id: str = args[1]
-    df = DocsFile(document_id).open()
-    document = json.loads(df.read())
-    document = ObjectDict(document)
-    # named_styles = {x.namedStyleType: x for x in document.namedStyles.styles}
-    # print(f"{len(named_styles)} named styles: {', '.join(sorted(named_styles.keys()))}")
-    # handle_content(document.body.content)
-    # print("Done")
-    # content = document.body.content
-    paragraph_stream = paras(document)
+def render_paragraphs(paragraph_stream):
     chunk = []
     for para in paragraph_stream:
         p_type, elements = para_type(para, len(chunk) != 0)
         #
         # Special case: code paragraphs are accumulated
-        # into a chunk, which becomes a single paragraph.
+        # into a chunk, which becomes a single paragraph
+        # rendered as <pre><code>.
         #
         if p_type == "code":
             chunk.append(elements[0].textRun.content)
@@ -241,6 +241,39 @@ def main(args=sys.argv):
         if chunk:
             render_code_chunk(chunk)
             chunk = []
+
+
+def main(args=sys.argv):
+    """
+    Process a Google docs document into a blog entry.
+    """
+    document_id: str = args[1]
+    df = DocsFile(document_id).open()
+    document = json.loads(df.read())
+    document = ObjectDict(document)
+    paragraph_stream = paragraphs_from(document.body.content)
+    render_paragraphs(paragraph_stream)
+    if footnote_map:
+        print(
+            """<h3>Footnotes</h3>
+        <ol id="footnotes">
+"""
+        )
+        for number, id in footnote_map.items():
+
+            print(f"""        <li id="footnote-{number}">""")
+            render_paragraphs(paragraphs_from(document.footnotes[id].content))
+            print("</cite>")
+        print(
+            """
+            </ol>
+"""
+        )
+
+    #
+    # Finally, render the footnotes in such a way that the links
+    # from the body text correctly reference the anchors.
+    #
 
 
 def load(args=sys.argv):
