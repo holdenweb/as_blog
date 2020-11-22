@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "as_blog"
+version = "0.1-alpha.0"
+description = "What we need to build a blog into a book"
+authors = [
+                "Steve Holden <steve@holdenweb.com>",
+                "Alex Martelli <aleaxit@gmail.com>"]
+
+packages = [
+    { include = "tools", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.6 || ^3.7 || ^3.8"
+hu = "^0.9.0"
+
+[tool.poetry.dev-dependencies]
+tox = "^3.20"
+flake8 = "^3.8.4"
+coverage = "^5.3"
+pytest = "^6.1"
+pytest-cov = "^2.10"
+
+[build-system]
+requires = ["poetry>=0.12", "setuptools", "wheel"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry.scripts]
+pull = 'docs:main'
+view = 'walk_blog:main'
+load = 'walk_blog:load'
