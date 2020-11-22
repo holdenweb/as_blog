@@ -29,40 +29,48 @@ class DocsFile:
 
     def open(self):
         if not self.cached():  # Could check mod date and commit new version?
-            self.retrieve(self.document_id)
+            print("Cacheing file", file=sys.stderr)
+            self.retrieve()
         return open(self.cached_path)
 
     def retrieve(self):
         """
         Shows basic usage of the Docs API.
         """
-        creds = None
-        # The file token.pickle stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists("token.pickle"):
-            with open("token.pickle", "rb") as token:
-                creds = pickle.load(token)
-        # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", SCOPES
-                )
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open("token.pickle", "wb") as token:
-                pickle.dump(creds, token)
-
+        creds = authenticate()
         service = build("docs", "v1", credentials=creds)
 
         # Retrieve the documents contents from the Docs service.
         document = service.documents().get(documentId=self.document_id).execute()
-        with open(self.cached_path, "w") as fp:
-            json.dump(document, fp)
+        with open(self.cached_path, "w") as file_pointer:
+            print("Writing to cache", file=sys.stderr)
+            json.dump(document, file_pointer)
+
+
+def authenticate():
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists("token.pickle"):
+        with open("token.pickle", "rb") as token:
+            creds = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open("token.pickle", "wb") as token:
+            pickle.dump(creds, token)
+    return creds
+
+
+def main(args=sys.argv):
+    DocsFile(document_id=args[1]).retrieve()
 
 
 if __name__ == "__main__":
-    DocsFile(document_id=sys.argv[1]).retrieve()
+    main()
