@@ -185,6 +185,8 @@ def render_structuralElements(p):
                 content = f"<b>{content}</b>"
             if "italic" in style and style.italic:
                 content = f"<i>{content}</i>"
+            if "link" in style:
+                content = f"""<a href="{style.link.url}">{content}</a>"""
             c_list.append(content)
         elif e_type == "footnoteReference":
             fnr = element.footnoteReference
