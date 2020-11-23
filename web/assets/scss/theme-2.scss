@@ -27,8 +27,8 @@ $gray-800: lighten($theme-text-color-primary, 10%);
 $gray-900: $theme-text-color-primary;
 
 $theme-colors: (
-  "primary":  $theme-color-primary, 
-  "secondary":  $theme-text-color-secondary, 
+  "primary":  $theme-color-primary,
+  "secondary":  $theme-text-color-secondary,
 );
 
 /*************************** Import Bootstrap  *****************************/
@@ -37,4 +37,3 @@ $theme-colors: (
 
 /*************************** Theme Styles Section ****************************/
 @import "theme/styles.scss"
-

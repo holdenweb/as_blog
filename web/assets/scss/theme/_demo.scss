@@ -79,7 +79,7 @@ body {
         a {
            display: block;
            width: 28px;
-           height: 28px; 
+           height: 28px;
            border: 2px solid transparent;
            margin-top: 5px;
            &:hover {
@@ -103,7 +103,7 @@ body {
         &.theme-2 {
             a {
                 background-color: $theme-2;
-            }            
+            }
         }
         &.theme-3 {
             a {
@@ -130,17 +130,17 @@ body {
                 background-color: $theme-7;
             }
         }
-        
+
         &.theme-8 {
             a {
                 background-color: $theme-8;
             }
         }
-        
-       
-              
+
+
+
     }
-    
+
     .close {
         position: absolute;
         right: 5px;

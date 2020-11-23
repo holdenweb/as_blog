@@ -3,7 +3,7 @@
 
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 576px) {
-    
+
 }
 
 // Medium devices (tablets, 768px and up)
@@ -19,8 +19,8 @@
 
 // Large devices (desktops, 992px and up)
 @media (min-width: 992px) {
-    
-	
+
+
 }
 
 // Extra large devices (large desktops, 1200px and up)
@@ -33,7 +33,7 @@
 // We occasionally use media queries that go in the other direction (the given screen size or smaller):
 // Medium devices (tablets, less than 992px)
 @media (max-width: 991.98px) {
-	
+
 	.header {
 		position: static;
 		width: inherit;
@@ -43,24 +43,24 @@
 			position: absolute;
 			left: 0;
 			top: 1.2rem;
-			
+
 		}
 		.btn-primary {
 			width: 100%;
 		}
 
 	}
-	
-	
+
+
     .header .navbar {
 	    padding: 1rem;
     }
-    
+
     .main-wrapper {
 	    margin-left: 0;
     }
-    
-	
+
+
 }
 // Small devices (landscape phones, less than 768px)
 @media (max-width: 767.98px) {
@@ -82,7 +82,6 @@
 
 // Extra small devices (portrait phones, less than 576px)
 @media (max-width: 575.98px) {
-	
-	
-}
 
+
+}

@@ -186,7 +186,7 @@ class LineItem:
     @property
     def sales_tax(self) -> Decimal:
         return self.net_price * Decimal(1 + self.tax_percent/100)
-    
+
     @property
     def total_price(self) -> Decimal:
         return self.net_price + self.sales_tax
@@ -239,4 +239,3 @@ And I added this paragraph because there’s a bug in my code detection logic
 
 
 </p>
-

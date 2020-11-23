@@ -1,11 +1,11 @@
 /* ============= Base ============= */
 
 /*********** Theme Generic **********/
-body { 
+body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: $theme-text-color-secondary;
-    
+
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -51,9 +51,9 @@ h1, h2, h3, h4, h5, h6 {
 	width: $sidebar-width;
 	background: $theme-color-primary;
 	color: #fff;
-	
-	
-	
+
+
+
 	.blog-name {
 		font-weight: bold;
 		font-size: 1.5rem;
@@ -65,7 +65,7 @@ h1, h2, h3, h4, h5, h6 {
 			}
 		}
 	}
-	
+
 	.btn-primary {
 		background: rgba(0, 0, 0, 0.3);
 		border-color: transparent;
@@ -76,60 +76,60 @@ h1, h2, h3, h4, h5, h6 {
 			border-color: transparent;
 		}
 	}
-	
-	
+
+
 	.navbar {
 	    padding: 2rem 1rem;
     }
-    
+
     .navbar-toggler {
 	    &:focus {
 		    outline: none;
 	    }
     }
-    
+
     .navbar-dark {
-	    
+
 	    .navbar-toggler {
 		    @include border-radius(2px);
 		    @include opacity(0.8);
 		    border: 1px solid rgba(256, 256, 256, 0.8);
 		    padding: .25rem .6rem;
-		    
+
 		    &:hover {
 			    @include opacity(1);
-			    
+
 		    }
 	    }
-	    
-	    
+
+
 	    .navbar-toggler-icon {
 		   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(256,256,256, 1)' stroke-width='3' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E");
 	    }
     }
-    
+
     .nav-item {
 	    font-weight: bold;
 	    &.active {
 		    .nav-link {
-			   
-		       color: rgba(0, 0, 0, 0.5); 
+
+		       color: rgba(0, 0, 0, 0.5);
 		       &:hover {
 				    text-decoration: none;
 			    }
 		    }
-		    
-		    
+
+
 	    }
 	    .nav-link {
 		    color: rgba(256, 256, 256, 0.8);
 		    &:hover {
 			    text-decoration: underline;
-			    color: rgba(0, 0, 0, 0.6); 
+			    color: rgba(0, 0, 0, 0.6);
 		    }
 	    }
-	    
-	    
+
+
     }
 }
 
@@ -143,15 +143,15 @@ h1, h2, h3, h4, h5, h6 {
 		a {
 			color: #fff;
 			text-decoration: underline;
-			
+
 			&:hover {
 				color: rgba(0, 0, 0, 0.6);
-				
+
 			}
 		}
 	}
-	
-	
+
+
 }
 .social-list {
 
@@ -168,7 +168,7 @@ h1, h2, h3, h4, h5, h6 {
 			color: darken($theme-color-primary, 10%);
 			background-color: rgba(256, 256, 256, 0.8);
 		}
-		
+
 	}
 }
 
@@ -176,7 +176,7 @@ h1, h2, h3, h4, h5, h6 {
 .main-wrapper {
 	margin-left: $sidebar-width;
 	background: #fff;
-	
+
 	.container {
 		max-width: $single-col-max-width;
 	}
