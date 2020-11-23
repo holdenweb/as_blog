@@ -1,3 +1,6 @@
+import json
+
+from docs import SQLDoc
 from flask import Flask
 from flask import send_from_directory
 from hu import ObjectDict as OD
@@ -22,7 +25,7 @@ item_vars = OD(
 )
 post_vars = OD(
     {
-        "title": "Well, I Guess Titles Work?!",
+        "title": "Sorry, titles aren't working yet",
         "content": """<h3 class="mt-5 mb-3">This is a Heading!</h3>
         <p>This is what most content paragraphs will look like.  Body text paragraphs not identified as code will be set
         in this font and spacing. Both bold and italic emphasis should work. For some reason it's easier to write code
@@ -50,10 +53,21 @@ def show_page(name):
 @app.route("/blog/<id>")
 def blog_page_view(id):
     template = env.get_template("blog-post.html")
-    with open(f"/Users/sholden/.docs_cache/html/{id}.html") as h_file:
-        envars.post.content = h_file.read()
+    envars = OD({"post": load_content(id), "item": item_vars})
     result = template.render(**envars)
     return result
+
+
+def load_content(id):
+    doc = SQLDoc(id)
+    record = doc.load()
+    return OD(
+        {
+            "content": record.html,
+            "document": OD(json.loads(record.json)),
+            "title": record.title,
+        }
+    )
 
 
 @app.route("/assets/<path:path>")

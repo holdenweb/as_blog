@@ -5,9 +5,10 @@ import json
 import re
 import sys
 import unicodedata
+from io import StringIO
 
-from docs import DocsFile
-from hu import ObjectDict
+from docs import SQLDoc
+from hu import ObjectDict as OD
 
 footnote_map = {}
 
@@ -248,11 +249,19 @@ def main(args=sys.argv):
     Process a Google docs document into a blog entry.
     """
     document_id: str = args[1]
-    df = DocsFile(document_id).open()
-    document = json.loads(df.read())
-    document = ObjectDict(document)
+    df = SQLDoc(document_id)
+    record = df.load()
+    document = OD(json.loads(record.json))
+    document = OD(document)
+    #
+    # Render the document body.
+    #
     paragraph_stream = paragraphs_from(document.body.content)
     render_paragraphs(paragraph_stream)
+    #
+    # Finally, render the footnotes in such a way that the links
+    # from the body text correctly reference the anchors.
+    #
     if footnote_map:
         print(
             """<h3>Footnotes</h3>
@@ -263,24 +272,22 @@ def main(args=sys.argv):
 
             print(f"""        <li id="footnote-{number}">""")
             render_paragraphs(paragraphs_from(document.footnotes[id].content))
-            print("</cite>")
         print(
             """
             </ol>
 """
         )
 
-    #
-    # Finally, render the footnotes in such a way that the links
-    # from the body text correctly reference the anchors.
-    #
-
 
 def load(args=sys.argv):
     save_stdout = sys.stdout
-    sys.stdout = open(f"/Users/sholden/.docs_cache/html/{sys.argv[1]}.html", "w")
+    sys.stdout = StringIO()
     main(args)
+    result = sys.stdout.getvalue()
     sys.stdout = save_stdout
+    document_id: str = args[1]
+    df = SQLDoc(document_id)
+    df.set_html(result)
 
 
 if __name__ == "__main__":
