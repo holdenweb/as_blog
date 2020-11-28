@@ -5,7 +5,9 @@ import json
 import re
 import sys
 import unicodedata
+import webbrowser
 from io import StringIO
+from typing import List
 
 from docs import SQLDoc
 from hu import ObjectDict as OD
@@ -281,7 +283,7 @@ def main(args=sys.argv):
         )
 
 
-def load(args=sys.argv):
+def load(args: List[str] = sys.argv):
     save_stdout = sys.stdout
     sys.stdout = StringIO()
     main(args)
@@ -289,8 +291,14 @@ def load(args=sys.argv):
     sys.stdout = save_stdout
     document_id: str = args[1]
     df = SQLDoc(document_id)
-    df.set_html(result)
+    doc = OD(df.load())
+    df.set_html(result, doc.title)
+
+
+def browse(args: List[str] = sys.argv):
+    document_id: str = args[1]
+    webbrowser.open(f"http://localhost:5000/blog/{document_id}")
 
 
 if __name__ == "__main__":
-    main()
+    load()

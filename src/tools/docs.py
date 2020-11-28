@@ -29,12 +29,6 @@ class Doc:
     def cached(self):
         return os.path.exists(self.cached_path)
 
-    # def open(self):
-    # if not self.cached():  # Could check mod date and commit new version?
-    # print("Cacheing document", file=sys.stderr)
-    # self.pull()
-    # return open(self.cached_path)
-
     def pull(self):
         """
         Retrieve the subject document in its current form from Docs.
@@ -52,27 +46,48 @@ class Doc:
             json.dump(document, file_pointer)
 
 
+def open_db():
+    if not open_db.conn:
+        open_db.conn = db.connect("docs.db")
+        open_db.curs = open_db.conn.cursor()
+        open_db.curs.execute(
+            """
+            CREATE TABLE IF NOT EXISTS documents (
+                id integer primary key autoincrement,
+                documentId varchar,
+                json varchar,
+                html varchar,
+                title varchar,
+                slug varchar,
+                status varchar,
+                when_published datetime
+            )"""
+        )
+    return open_db.conn, open_db.curs
+
+
+open_db.conn = open_db.curs = None
+
+
+class Documents:
+    def __init__(self):
+        self.conn, self.curs = open_db()
+
+    def list(self, order_by=None, fields="*"):
+        sql = f"""SELECT {fields} FROM documents"""
+        if order_by:
+            sql = f"{sql} ORDER BY {order_by}"
+        self.curs.execute(sql)
+        yield from self.curs.fetchall()
+
+
 class SQLDoc(Doc):
     def __init__(self, document_id):
         super().__init__(document_id)
         self.open_db()
 
     def open_db(self):
-        self.conn = db.connect("docs.db")
-        self.curs = self.conn.cursor()
-        self.curs.execute(
-            """
-        CREATE TABLE IF NOT EXISTS documents (
-            id integer primary key autoincrement,
-            documentId varchar,
-            json varchar,
-            html varchar,
-            title varchar,
-            slug varchar,
-            status varchar,
-            when_published datetime
-        )"""
-        )
+        self.conn, self.curs = open_db()
 
     def cached(self):
         self.curs.execute(

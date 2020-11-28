@@ -13,6 +13,9 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.6 || ^3.7 || ^3.8"
 hu = "^0.9.0"
+google-api-python-client = "^1.12.8"
+google-auth-oauthlib = "^0.4.2"
+Flask = "^1.1.2"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.20"
@@ -29,3 +32,4 @@ build-backend = "poetry.masonry.api"
 pull = 'docs:main'
 view = 'walk_blog:main'
 load = 'walk_blog:load'
+browse = "walk_blog:browse"
