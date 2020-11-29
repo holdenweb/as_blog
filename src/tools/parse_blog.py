@@ -1,7 +1,7 @@
 import json
 import sys
 
-from docs import DocsFile
+from docs import Doc
 from hu import ObjectDict
 from styles import StyleStack
 
@@ -199,7 +199,7 @@ def main(document_id: str):
     """
 
     """
-    df = DocsFile(document_id).open()
+    df = Doc(document_id).open()
     document = json.loads(df.read())
     document = ObjectDict(document)
     parser = MyDoc()

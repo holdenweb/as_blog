@@ -2,43 +2,21 @@
 Process a document into publishable blog format.
 """
 import json
-import re
 import sys
-import unicodedata
 import webbrowser
 from io import StringIO
+from typing import Generator
 from typing import List
+from typing import Tuple
 
 from docs import SQLDoc
 from hu import ObjectDict as OD
 
+
 footnote_map = {}
 
-_slugify_strip_re = re.compile(r"[^\w\s-]")
-_slugify_hyphenate_re = re.compile(r"[-\s]+")
 
-
-def slugify(value):
-    """
-    Normalizes string, converts to lowercase, removes non-alpha characters,
-    and converts spaces to hyphens.
-
-    From Django's "django/template/defaultfilters.py".
-    """
-    if not isinstance(value, str):
-        value = str(value)
-    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore")
-    value = str(_slugify_strip_re.sub("", value).strip().lower())
-    return _slugify_hyphenate_re.sub("-", value)
-
-
-def _slugify(string):
-    if not string:
-        return ""
-    return slugify(string)
-
-
-def element_type(se):
+def element_type(se: OD) -> str:
     residuals = se.keys() - {"startIndex", "endIndex"}
     assert len(residuals) == 1, "Unexpected key in structuralElement :{!r}".format(
         sorted(se.keys())
@@ -46,11 +24,11 @@ def element_type(se):
     return residuals.pop()
 
 
-def handle_textRun(tr):
+def handle_textRun(tr: OD) -> None:
     pass
 
 
-def handle_footnoteReference(fnr):
+def handle_footnoteReference(fnr: OD) -> None:
     """
     Besides rendering a link to the footnote in the body of the output,
     we must also remember the footnoteId against the footnoteNumber, in
@@ -68,11 +46,10 @@ def handle_footnoteReference(fnr):
     footnote_map[fnr.footnoteNumber] = fnr.footnoteId
 
 
-def handle_paragraph(p):
+def handle_paragraph(p: OD) -> None:
     """
     A paragraph is a sequence of paragraphElements.
     """
-    # print(p.paragraphStyle, len(p.elements))
     for pe in p.elements:
         handle_paragraphElement(pe)
 
@@ -83,14 +60,21 @@ class AnyOf:
     one of the established sub-elements.
     """
 
-    def __init__(self, elements):
+    def __init__(self, elements: dict):
+        """
+        Record the possible sub-elements with their handlers.
+        """
         self.sub_elements = elements
 
-    def __call__(self, element):
+    def __call__(self, element: dict) -> None:
+        """
+        Given an element, select its handler by type and call it.
+
+        We currently ignore elements for which no handler is mapped.
+        """
         et = element_type(element)
         if et in self.sub_elements:
-            self.sub_elements[et](element[et])
-        # At present we do nothing about unhandled sub-elements.
+            return self.sub_elements[et](element[et])
 
 
 # class EachOf(AnyOf):
@@ -109,9 +93,15 @@ class SequenceOf:
     """
 
     def __init__(self, handler):
+        """
+        Remember the handler.
+        """
         self.handler = handler
 
-    def __call__(self, element):
+    def __call__(self, element: List[OD]) -> None:
+        """
+        Given a list of elements of a given type, handle each one.
+        """
         for sub_element in element:
             self.handler(sub_element)
 
@@ -129,13 +119,13 @@ pe_handlers = {"textRun": handle_textRun, "footnoteReference": handle_footnoteRe
 handle_paragraphElement = AnyOf(pe_handlers)
 
 
-def paragraphs_from(content):
+def paragraphs_from(content: List[OD]) -> Generator[OD, None, None]:
     for element in content:
         if element_type(element) == "paragraph":
             yield element.paragraph
 
 
-def is_code(para, in_chunk):
+def is_code(para: OD, in_chunk: bool) -> bool:
     if len(para.elements) == 1:
         text_run = para.elements[0].textRun
         style = text_run.textStyle
@@ -147,13 +137,13 @@ def is_code(para, in_chunk):
     return False
 
 
-def para_type(para, in_chunk):
+def para_type(para: OD, in_chunk: bool) -> Tuple[str, List[OD]]:
     if is_code(para, in_chunk):
         return "code", para.elements
     return para.paragraphStyle.namedStyleType, para.elements
 
 
-def render_code_chunk(chunk):
+def render_code_chunk(chunk: List[str]) -> None:
     """
     A chunk is simply a list of code lines to be
     set as a single paragraph in monospaced font.
@@ -173,7 +163,7 @@ def render_code_chunk(chunk):
     print(result)
 
 
-def render_structuralElements(p):
+def render_structuralElements(p: OD) -> str:
     """
     Render the textRuns and footnoteReferences from a paragraph.
     """
@@ -199,7 +189,7 @@ def render_structuralElements(p):
     return "".join(c_list)
 
 
-def render_normal_text(p):
+def render_normal_text(p: OD) -> None:
     result = f"""\
 <p class="normal_text">
 {render_structuralElements(p)}
@@ -248,7 +238,7 @@ def render_paragraphs(paragraph_stream):
             chunk = []
 
 
-def main(args=sys.argv):
+def main(args=sys.argv) -> None:
     """
     Process a Google docs document into a blog entry.
     """
@@ -283,11 +273,14 @@ def main(args=sys.argv):
         )
 
 
-def load(args: List[str] = sys.argv):
+def load(args: List[str] = sys.argv) -> None:
+    """
+    Divert stdout to a StringIO for generation, then store in SQLite.
+    """
     save_stdout = sys.stdout
-    sys.stdout = StringIO()
+    sys.stdout = s = StringIO()
     main(args)
-    result = sys.stdout.getvalue()
+    result = s.getvalue()
     sys.stdout = save_stdout
     document_id: str = args[1]
     df = SQLDoc(document_id)
@@ -295,7 +288,10 @@ def load(args: List[str] = sys.argv):
     df.set_html(result, doc.title)
 
 
-def browse(args: List[str] = sys.argv):
+def browse(args: List[str] = sys.argv) -> None:
+    """
+    Serve up an already-loaded page in a new browser window.
+    """
     document_id: str = args[1]
     webbrowser.open(f"http://localhost:5000/blog/{document_id}")
 
