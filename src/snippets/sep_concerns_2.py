@@ -79,7 +79,7 @@ def post_tax_price(item: PurchasedItem) -> Decimal:
     return net_price(item) * Decimal((100 + tax_percent(item))) / 100
 
 
-def tax_percent(item: PurchasedItem):
+def tax_percent(item: PurchasedItem) -> int:
     """
     Return tax percentage to apply to a purchased item. For example:
     >>>
@@ -89,7 +89,7 @@ def tax_percent(item: PurchasedItem):
     return SALES_TAX_PERCENT.get(item.category, 6)
 
 
-def make_line_items(p_items: List[PurchasedItem]):
+def make_line_items(p_items: List[PurchasedItem]) -> List[LineItem]:
     """Produce LineItems from PurchasedItems, for example:
     >>> lines = make_line_items(example_items)
     >>> for line in lines:
@@ -118,3 +118,15 @@ def print_detail(line_items: List[LineItem]) -> None:
             f"{(it.total_price):4<.2f}"
         )
         print(line)
+
+
+def print_bill2(p_items: List[PurchasedItem]) -> None:
+    """By-line output total, then item prices with sales tax. For example:
+    >>> print_bill2(example_items)
+    Total: 568.39
+    6  Bordeaux         (wine            ) 10% 21.12 266.11
+    6  Viognier         (wine            ) 10% 23.99 302.27
+    """
+    line_items = make_line_items(p_items)
+    print("Total:", total_sum4(line_items))
+    print_detail(line_items)
