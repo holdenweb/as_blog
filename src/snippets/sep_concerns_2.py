@@ -24,18 +24,18 @@ SALES_TAX_PERCENT = {"beer": 8, "wine": 10, "spirits": 13, "staples": 0}
 
 
 # snippet sep-concerns2-3
-def print_bill1(items: List[PurchasedItem]) -> None:
+def print_bill1(p_items: List[PurchasedItem]) -> None:
     """By-line output item prices with sales tax, then total. For example:
     >>> print_bill1(example_items)
-    6  Bordeaux         (wine            ) 10% 21.12 266.11
-    6  Viognier         (wine            ) 10% 23.99 302.27
-    Total: 568.39
-    """
+    6  Bordeaux         (wine            ) 10% 21.12 139.39
+    6  Viognier         (wine            ) 10% 23.99 158.33
+    Total: 297.72
+"""
     item_prices = []
-    for it in items:
-        item_price = it.unit_price * it.units
+    for it in p_items:
+        item_price = round(it.unit_price * it.units, 2)
         item_tax_percent = SALES_TAX_PERCENT.get(it.category, 6)
-        item_tax = item_price * Decimal(1 + item_tax_percent / 100)
+        item_tax = round(item_price * Decimal((item_tax_percent) / 100), 2)
         line = (
             f"{it.units:<2d} {it.name:<16s} ({it.category:<16s}) "
             f"{item_tax_percent:<2d}% {it.unit_price:4<.2f} "
@@ -60,7 +60,7 @@ class LineItem:
 
     @property
     def total_price(self) -> Decimal:
-        return self.net_price + self.sales_tax
+        return round(self.net_price + self.sales_tax, 2)
 
 
 def net_price(item: PurchasedItem) -> Decimal:
@@ -68,15 +68,16 @@ def net_price(item: PurchasedItem) -> Decimal:
     >>> print(net_price(example_items[0]))
     126.72
     """
-    return item.unit_price * item.units
+    return round(item.unit_price * item.units, 2)
 
 
 def post_tax_price(item: PurchasedItem) -> Decimal:
     """Price of a single item, including sales tax. For example:
     >>> print(post_tax_price(example_items[0]))
-    139.392
+    139.39
     """
-    return net_price(item) * Decimal((100 + tax_percent(item))) / 100
+    price = net_price(item) * Decimal((100 + tax_percent(item))) / 100
+    return round(price, 2)
 
 
 def tax_percent(item: PurchasedItem) -> int:
@@ -104,7 +105,7 @@ def make_line_items(p_items: List[PurchasedItem]) -> List[LineItem]:
 def total_sum4(line_items: List[LineItem]) -> Decimal:
     """Sum of total item prices with sales tax. For example:
     >>> print(total_sum4(make_line_items(example_items)))
-    297.726
+    297.72
     """
     return sum(it.total_price for it in line_items)
 
@@ -123,10 +124,9 @@ def print_detail(line_items: List[LineItem]) -> None:
 def print_bill2(p_items: List[PurchasedItem]) -> None:
     """By-line output total, then item prices with sales tax. For example:
     >>> print_bill2(example_items)
-    Total: 568.39
-    6  Bordeaux         (wine            ) 10% 21.12 266.11
-    6  Viognier         (wine            ) 10% 23.99 302.27
-    """
+    Total: 297.72
+    6  Bordeaux         (wine            ) 10% 21.12 139.39
+    6  Viognier         (wine            ) 10% 23.99 158.33"""
     line_items = make_line_items(p_items)
-    print("Total:", total_sum4(line_items))
+    print(f"Total: {total_sum4(line_items):5<.2f}")
     print_detail(line_items)
