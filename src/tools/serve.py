@@ -1,7 +1,11 @@
 import json
+import sys
+from datetime import datetime
 
+from docs import Documents
 from docs import SQLDoc
 from flask import Flask
+from flask import Response
 from flask import send_from_directory
 from hu import ObjectDict as OD
 from jinja2 import Environment
@@ -35,12 +39,18 @@ post_vars = OD(
         "when_published": item_vars.when_published,
     }
 )
+
 envars = OD({"item": item_vars, "post": post_vars})
 
 
 @app.route("/")
 def hello_world():
-    return "Hello, World!"
+    data = dict(
+        python=sys.version,
+        author={"name": "Steve Holden", "email": "steve@holdenweb.com"},
+        date_time=datetime.now().strftime("%A %d, %B %Y %H:%M:%S"),
+    )
+    return Response(json.dumps(data), mimetype="application/json")
 
 
 @app.route("/page/<name>")
@@ -72,9 +82,14 @@ def load_content(id):
 
 @app.route("/assets/<path:path>")
 def serve_asset(path):
-    import os
-
-    print(os.getcwd())
     return send_from_directory(
         "/Users/sholden/Projects/Python/blogAlexSteve/web/assets", path
+    )
+
+
+@app.route("/api/v1/articles")
+def articles():
+    d = Documents()
+    return Response(
+        json.dumps(list(d.list(fields="id, title, slug"))), mimetype="application/json"
     )
