@@ -2,5 +2,7 @@ credentials.json
 token.json
 token.pickle
 venv/
+build/
+dist/
 *.wp?
 __pycache__

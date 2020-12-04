@@ -18,6 +18,8 @@ google-auth-oauthlib = "^0.4.2"
 Flask = "^1.1.2"
 id = "^0.1.0"
 mypy = "^0.790"
+Flask-WTF = "^0.14.3"
+Flask-Bootstrap = "^3.3.7"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.20"
