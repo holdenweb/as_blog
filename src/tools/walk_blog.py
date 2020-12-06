@@ -4,24 +4,19 @@ Process a document into publishable blog format.
 import json
 import sys
 import webbrowser
+from functools import partial
 from io import StringIO
-from typing import Generator
 from typing import List
-from typing import Tuple
 
+from doc_utils import element_type
+from doc_utils import para_type
+from doc_utils import paragraphs_from
 from docs import SQLDoc
 from hu import ObjectDict as OD
 
 
 footnote_map = {}
-
-
-def element_type(se: OD) -> str:
-    residuals = se.keys() - {"startIndex", "endIndex"}
-    assert len(residuals) == 1, "Unexpected key in structuralElement :{!r}".format(
-        sorted(se.keys())
-    )
-    return residuals.pop()
+font_map = set()
 
 
 def handle_textRun(tr: OD) -> None:
@@ -119,30 +114,6 @@ pe_handlers = {"textRun": handle_textRun, "footnoteReference": handle_footnoteRe
 handle_paragraphElement = AnyOf(pe_handlers)
 
 
-def paragraphs_from(content: List[OD]) -> Generator[OD, None, None]:
-    for element in content:
-        if element_type(element) == "paragraph":
-            yield element.paragraph
-
-
-def is_code(para: OD, in_chunk: bool) -> bool:
-    if len(para.elements) == 1:
-        text_run = para.elements[0].textRun
-        style = text_run.textStyle
-        if (
-            "weightedFontFamily" in style
-            and style.weightedFontFamily.fontFamily == "Consolas"
-        ) or (in_chunk and text_run.content == "\n"):
-            return True
-    return False
-
-
-def para_type(para: OD, in_chunk: bool) -> Tuple[str, List[OD]]:
-    if is_code(para, in_chunk):
-        return "code", para.elements
-    return para.paragraphStyle.namedStyleType, para.elements
-
-
 def render_code_chunk(chunk: List[str]) -> None:
     """
     A chunk is simply a list of code lines to be
@@ -173,12 +144,14 @@ def render_structuralElements(p: OD) -> str:
         if e_type == "textRun":
             style = element.textRun.textStyle
             content = element.textRun.content
-            if "bold" in style and style.bold:
-                content = f"<b>{content}</b>"
-            if "italic" in style and style.italic:
-                content = f"<i>{content}</i>"
-            if "link" in style:
-                content = f"""<a href="{style.link.url}">{content}</a>"""
+            style_set = {}
+            handle_bold(style, style_set)
+            handle_italic(style, style_set)
+            handle_font_size(style, style_set)
+            handle_font_family(style, style_set)
+            if style_set:
+                span_style = "; ".join(f"{k}:{v}" for (k, v) in style_set.items())
+                content = f"""<span style="{span_style}">{content}</span>"""
             c_list.append(content)
         elif e_type == "footnoteReference":
             fnr = element.footnoteReference
@@ -187,6 +160,31 @@ def render_structuralElements(p: OD) -> str:
             )
             footnote_map[fnr.footnoteNumber] = fnr.footnoteId
     return "".join(c_list)
+
+
+def handle_font_family(style, style_set):
+    if "weightedFontFamily" in style and style.weightedFontFamily:
+        wff = style.weightedFontFamily
+        if "weight" in wff and wff.weight:
+            style_set["font_weight"] = wff.weight
+        if "fontFamily" in wff and wff.fontFamily:
+            style_set["font-family"] = wff.fontFamily
+            font_map.add(wff.fontFamily)
+
+
+def handle_font_size(style, style_set):
+    if "fontSize" in style:
+        style_set["font-size"] = f"{style.fontSize.magnitude}pt"
+
+
+def handle_italic(style, style_set):
+    if "italic" in style and style.italic:
+        style_set["font-style"] = "italic"
+
+
+def handle_bold(style, style_set):
+    if "bold" in style and style.bold:
+        style_set["font-weight"] = "bold"
 
 
 def render_normal_text(p: OD) -> None:
@@ -198,13 +196,23 @@ def render_normal_text(p: OD) -> None:
     print(result)
 
 
-def render_heading_2(p):
+def render_heading(h_type, p):
+    # TODO: should insert correct class, or possibly none at all
     result = f"""\
-<h2 class="normal_text">{render_structuralElements(p)}</h2>"""
+<{h_type} class="normal_text">{render_structuralElements(p)}</{h_type}>"""
     print(result)
 
 
-renderer = {"NORMAL_TEXT": render_normal_text, "HEADING_2": render_heading_2}
+render_heading_1 = partial(render_heading, "h1")
+render_heading_2 = partial(render_heading, "h2")
+render_heading_3 = partial(render_heading, "h3")
+
+renderer = {
+    "NORMAL_TEXT": render_normal_text,
+    "HEADING_1": render_heading_1,
+    "HEADING_2": render_heading_2,
+    "HEADING_3": render_heading_3,
+}
 
 
 def render_paragraphs(paragraph_stream):
@@ -256,6 +264,9 @@ def main(args=sys.argv) -> None:
     # Finally, render the footnotes in such a way that the links
     # from the body text correctly reference the anchors.
     #
+    # TODO: Move the HTML into a template and generate
+    #       whole section with jinja2
+    #
     if footnote_map:
         print(
             """<h3>Footnotes</h3>
@@ -294,6 +305,16 @@ def browse(args: List[str] = sys.argv) -> None:
     """
     document_id: str = args[1]
     webbrowser.open(f"http://localhost:5000/blog/{document_id}")
+
+
+def showjson(args: List[str] = sys.argv) -> None:
+    """
+    Output the raw JSON from the document store.
+    """
+    document_id: str = args[1]
+    df = SQLDoc(document_id)
+    record = df.load()
+    print(record.json)
 
 
 if __name__ == "__main__":

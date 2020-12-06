@@ -2,35 +2,27 @@ import json
 import sys
 from datetime import datetime
 
-import flask_bootstrap
-import flask_wtf
 from docs import Documents
 from docs import SQLDoc
 from flask import Flask
 from flask import Response
 from flask import send_from_directory
-from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from hu import ObjectDict as OD
 from jinja2 import ChoiceLoader
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
-from jinja2 import PackageLoader
 from wtforms import StringField
 from wtforms.validators import DataRequired
 
 env = Environment(
     loader=ChoiceLoader(
-        [
-            FileSystemLoader("/Users/sholden/Projects/Python/blogAlexSteve/web"),
-            PackageLoader("flask_bootstrap"),
-        ]
+        [FileSystemLoader("/Users/sholden/Projects/Python/blogAlexSteve/web")]
     )
 )
 
 
 app = Flask(__name__)
-bootstrap = Bootstrap(app)
 
 # Set the secret key to some random bytes. Keep this really secret!
 app.config["SECRET_KEY"] = b'_5#y2L"F4Q8z\n\xec]/'
@@ -109,31 +101,35 @@ def serve_asset(path):
 def articles():
     d = Documents()
     return Response(
-        json.dumps(list(d.list(fields="id, title, slug"))), mimetype="application/json"
+        json.dumps(list(d.list(fields="id, documentId, title, slug"))),
+        mimetype="application/json",
     )
 
 
-class MyBaseForm(FlaskForm):
-    pass
-    # class Meta:
-    # csrf = True  # Enable CSRF
-    # csrf_class = CSRFSession  # Set the CSRF implementation
-    # csrf_secret = b'foobar'  # Some implementations need a secret key.
+@app.route("/articles/list")
+def list_articles():
+    data = Documents().list(fields="id, documentID, title, slug")
+    tbl_template = env.get_template("list_articles.html")
+    content = tbl_template.render(data=data)
+    template = env.get_template("blog-post.html")
+    envars = OD({"post": content})
+    result = template.render(**envars)
+    return result
 
 
-class MyForm(MyBaseForm):
+class MyForm(FlaskForm):
     name = StringField("name", validators=[DataRequired()])
     doc_id = StringField("doc_id", validators=[DataRequired()])
 
 
-@app.route("/forms/test")
+@app.route("/forms/test", methods=["GET", "POST"])
 def form_test():
     template = env.get_template("test-form.html")
     my_form = MyForm()
     content = template.render(form=my_form)
     print(content)
     template = env.get_template("blog-post.html")
-    envars = OD({"post": {"content": content}, "item": item_vars})  # load_content(id),
+    envars = OD({"post": content, "item": item_vars})  # load_content(id),
     result = template.render(**envars)
     return result
 
