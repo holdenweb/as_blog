@@ -46,9 +46,9 @@ def print_and_save_bill(
 
 
 # snippet sep-concerns3-2
-def sales_tax_for_day(date: datetime.date, store: str = "bills") -> Decimal:
+def sales_tax_for_date(date: datetime.date, store: str = "bills") -> Decimal:
     """Retrieve total sales tax for a day from the `store`. For example:
-    >>> print(sales_tax_for_day(datetime.date(1999, 1, 1)))
+    >>> print(sales_tax_for_date(datetime.date(1999, 1, 1)))
     0
 
     (since there were no sales on the given `date` in the example).

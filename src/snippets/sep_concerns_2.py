@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 # snippet sep-concerns2-1
 
+DZERO = Decimal("0")
+
 
 @dataclass
 class PurchasedItem:
@@ -33,7 +35,7 @@ def print_bill1(p_items: List[PurchasedItem]) -> None:
 """
     item_prices = []
     for it in p_items:
-        item_price = round(it.unit_price * it.units, 2)
+        item_price = (it.unit_price * it.units).quantize(Decimal("1.00"))
         item_tax_percent = SALES_TAX_PERCENT.get(it.category, 6)
         item_tax = round(item_price * Decimal((item_tax_percent) / 100), 2)
         line = (
@@ -51,8 +53,8 @@ def print_bill1(p_items: List[PurchasedItem]) -> None:
 @dataclass
 class LineItem:
     it: PurchasedItem
-    net_price: Decimal = 0
-    tax_percent: Decimal = 0
+    net_price: Decimal = DZERO
+    tax_percent: Decimal = DZERO
 
     @property
     def sales_tax(self) -> Decimal:
@@ -98,7 +100,9 @@ def make_line_items(p_items: List[PurchasedItem]) -> List[LineItem]:
     126.72 10
     143.94 10
     """
-    line_items = [LineItem(it, net_price(it), tax_percent(it)) for it in p_items]
+    line_items = [
+        LineItem(it, net_price(it), Decimal(tax_percent(it))) for it in p_items
+    ]
     return line_items
 
 
@@ -107,7 +111,7 @@ def total_sum4(line_items: List[LineItem]) -> Decimal:
     >>> print(total_sum4(make_line_items(example_items)))
     297.72
     """
-    return sum(it.total_price for it in line_items)
+    return sum((it.total_price for it in line_items), DZERO)
 
 
 def print_detail(line_items: List[LineItem]) -> None:
@@ -115,7 +119,7 @@ def print_detail(line_items: List[LineItem]) -> None:
     for it in line_items:
         line = (
             f"{it.it.units:<2d} {it.it.name:<16s} ({it.it.category:<16s}) "
-            f"{it.tax_percent:<2d}% {it.it.unit_price:4<.2f} "
+            f"{it.tax_percent:<2f}% {it.it.unit_price:4<.2f} "
             f"{(it.total_price):4<.2f}"
         )
         print(line)
