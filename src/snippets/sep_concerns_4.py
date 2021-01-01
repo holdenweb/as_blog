@@ -19,6 +19,13 @@ def create_test_store():
 
 
 class Storage:
+    """
+    Store and retrieve orders in a shelve by customer within date.
+
+    Each date's is represented as a dictionary where the keys are
+    user identities and the values are lists of lists of LineItems.
+    """
+
     def __init__(self, store: str = "bills"):
         self.store = store
 
@@ -29,6 +36,9 @@ class Storage:
         self.db.close()
 
     def get(self, d: datetime.date):
+        """
+        Retrieve a given day's bills.
+        """
         k = d.isoformat()
         if k in self.db:
             bills = self.db[k]
@@ -37,16 +47,25 @@ class Storage:
         return bills
 
     def put(self, d: datetime.date, bills):
+        """
+        Update the bills for a particular date.
+        """
         k = d.isoformat()
         self.db[k] = bills
 
     def bills_for_date(self, d: datetime.date):
+        """
+        Retrieve the bills for a particular date.
+        """
         self.open()
         bills = self.get(d)
         self.close()
         return bills
 
     def write_order(self, d: datetime.date, user: str, line_items):
+        """
+        Save a bill against a specific date and user.
+        """
         self.open()
         bills = self.get(d)
         if user not in bills:
