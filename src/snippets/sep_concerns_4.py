@@ -10,6 +10,7 @@ from sep_concerns_2 import make_line_items
 from sep_concerns_2 import print_detail
 from sep_concerns_2 import PurchasedItem
 from sep_concerns_2 import total_sum4
+from sep_concerns_2 import TWO_DP
 
 
 # snippet sep-concerns4-1
@@ -76,15 +77,15 @@ class Storage:
 
 
 # snippet sep-concerns4-2
-def print_and_save_bill(
+def print_and_save_bill2(
     p_items: List[PurchasedItem],
     user: str = "",
     store: str = "bills",
     date: Optional[datetime.date] = None,
 ) -> None:
     """Output total, then item prices with sales tax. For example:
-    >>> create_test_store()    # Isolate tests from production dqta
-    >>> print_and_save_bill(example_items, store='test')
+    >>> create_test_store()    # Isolate tests from production data
+    >>> print_and_save_bill2(example_items, store='test')
     Total: 297.72
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
@@ -101,10 +102,10 @@ def print_and_save_bill(
 
 
 # snippet sep-concerns4-3
-def sales_tax_for_date(date: datetime.date, store: str = "bills") -> Decimal:
+def sales_tax_for_date2(date: datetime.date, store: str = "bills") -> Decimal:
     """Retrieve total sales tax for a day from the `store`. For example:
     >>> create_test_store()
-    >>> print_and_save_bill(
+    >>> print_and_save_bill2(
     ...     example_items,
     ...     date=datetime.date(2021, 1, 1),
     ...     user='steve',
@@ -114,11 +115,11 @@ def sales_tax_for_date(date: datetime.date, store: str = "bills") -> Decimal:
     6  Viognier         (wine            ) 10% 23.99 158.33
 
     The bill’s line items should now have been saved to `store`.
-    >>> print(sales_tax_for_date(datetime.date(1999, 1, 1), store='test'))
+    >>> print(sales_tax_for_date2(datetime.date(1999, 1, 1), store='test'))
     0
 
-    (there were no sales on the given date in the example).
-    >>> print(sales_tax_for_date(datetime.date(2021, 1, 1), store='test'))
+    (there were no sales on that date).
+    >>> print(sales_tax_for_date2(datetime.date(2021, 1, 1), store='test'))
     27.06
     """
     storage = Storage(store)
@@ -127,5 +128,5 @@ def sales_tax_for_date(date: datetime.date, store: str = "bills") -> Decimal:
     for user in bills:
         for line_items in bills[user]:
             for item in line_items:
-                sales_tax_total += round(item.sales_tax, 2)
+                sales_tax_total = (sales_tax_total + item.sales_tax).quantize(TWO_DP)
     return sales_tax_total

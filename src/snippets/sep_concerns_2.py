@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 # snippet sep-concerns2-1
 
-DZERO = Decimal("0")
+DZERO = Decimal("0.00")
+TWO_DP = Decimal("1.00")
 
 
 @dataclass
@@ -35,9 +36,9 @@ def print_bill1(p_items: List[PurchasedItem]) -> None:
 """
     item_prices = []
     for it in p_items:
-        item_price = (it.unit_price * it.units).quantize(Decimal("1.00"))
+        item_price = (it.unit_price * it.units).quantize(TWO_DP)
         item_tax_percent = SALES_TAX_PERCENT.get(it.category, 6)
-        item_tax = round(item_price * Decimal((item_tax_percent) / 100), 2)
+        item_tax = (item_price * Decimal((item_tax_percent)) / 100).quantize(TWO_DP)
         line = (
             f"{it.units:<2d} {it.name:<16s} ({it.category:<16s}) "
             f"{item_tax_percent:<2d}% {it.unit_price:4<.2f} "
@@ -62,7 +63,7 @@ class LineItem:
 
     @property
     def total_price(self) -> Decimal:
-        return round(self.net_price + self.sales_tax, 2)
+        return (self.net_price + self.sales_tax).quantize(TWO_DP)
 
 
 def net_price(item: PurchasedItem) -> Decimal:
@@ -70,7 +71,7 @@ def net_price(item: PurchasedItem) -> Decimal:
     >>> print(net_price(example_items[0]))
     126.72
     """
-    return round(item.unit_price * item.units, 2)
+    return (item.unit_price * item.units).quantize(TWO_DP)
 
 
 def post_tax_price(item: PurchasedItem) -> Decimal:
@@ -79,7 +80,7 @@ def post_tax_price(item: PurchasedItem) -> Decimal:
     139.39
     """
     price = net_price(item) * Decimal((100 + tax_percent(item))) / 100
-    return round(price, 2)
+    return price.quantize(TWO_DP)
 
 
 def tax_percent(item: PurchasedItem) -> int:
