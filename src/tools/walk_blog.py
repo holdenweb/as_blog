@@ -20,6 +20,7 @@ font_map = set()
 
 
 def handle_textRun(tr: OD) -> None:
+    print("**handletextrun")
     pass
 
 
@@ -45,6 +46,7 @@ def handle_paragraph(p: OD) -> None:
     """
     A paragraph is a sequence of paragraphElements.
     """
+    print("**handle_paragraph")
     for pe in p.elements:
         handle_paragraphElement(pe)
 
@@ -144,6 +146,8 @@ def render_structuralElements(p: OD) -> str:
         if e_type == "textRun":
             style = element.textRun.textStyle
             content = element.textRun.content
+            if "link" in style:
+                content = f"""<a href="{style.link.url}">{content}</a>"""
             style_set = {}
             handle_bold(style, style_set)
             handle_italic(style, style_set)
