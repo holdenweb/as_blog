@@ -19,6 +19,7 @@ Flask = "^1.1.2"
 id = "^0.1.0"
 Flask-WTF = "^0.14.3"
 Flask-Bootstrap = "^3.3.7"
+python-slugify = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.20"

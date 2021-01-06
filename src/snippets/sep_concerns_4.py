@@ -23,8 +23,9 @@ class Storage:
     """
     Store and retrieve orders in a shelve by customer within date.
 
-    Each date's is represented as a dictionary where the keys are
-    user identities and the values are lists of lists of LineItems.
+    Each date's value is a dictionary where the keys are
+    user identities and the values are lists of lists of LineItems,
+    one list per order.
     """
 
     def __init__(self, store: str = "bills"):
