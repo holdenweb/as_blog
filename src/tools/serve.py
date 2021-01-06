@@ -38,9 +38,10 @@ item_vars = OD(
 )
 post_vars = OD(
     {
-        "title": "Sorry, titles aren't working yet",
+        "title": "No title provided in this enviroment",
         "content": """<h3 class="mt-5 mb-3">This is a Heading!</h3>
-        <p>This is what most content paragraphs will look like.  Body text paragraphs not identified as code will be set
+        <p>It looks like no content was provided for this post by the code that generated it.</p>
+        <p>This is test content, to show will look like.  Body text paragraphs not identified as code will be set
         in this font and spacing. Both bold and italic emphasis should work. For some reason it's easier to write code
         than this kind of boilerplate text, but even a coder must suffer for her art. In these trying times one can more
         easily engage a copywriter than to do this kind of writing oneself.</p>\n
@@ -91,7 +92,7 @@ def load_content(id):
 
 @app.route("/assets/<path:path>")
 def serve_asset(path):
-    """Local testing hack - DO NOTE USE IN PRODUCTION!"""
+    """Local testing hack - DO NOT USE IN PRODUCTION!"""
     return send_from_directory(
         "/Users/sholden/Projects/Python/blogAlexSteve/web/assets", path
     )
@@ -112,7 +113,7 @@ def list_articles():
     tbl_template = env.get_template("list_articles.html")
     content = tbl_template.render(data=data)
     template = env.get_template("blog-post.html")
-    envars = OD({"post": content})
+    envars = OD({"post": {"title": "List of Articles", "content": content}})
     result = template.render(**envars)
     return result
 

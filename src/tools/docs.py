@@ -8,6 +8,7 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from hu import ObjectDict as OD
+from slugify import slugify
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ["https://www.googleapis.com/auth/documents.readonly"]
@@ -82,6 +83,9 @@ class Documents:
 
 
 class SQLDoc(Doc):
+    field_list = "id, documentId, json, html, title, slug, status"
+    fields = field_list.split(", ")
+
     def __init__(self, document_id):
         super().__init__(document_id)
         self.open_db()
@@ -99,33 +103,39 @@ class SQLDoc(Doc):
 
     def load(self) -> OD:
         self.curs.execute(
-            """SELECT id, documentId, json, html, title, slug, status FROM documents WHERE documentId=?""",
+            f"""SELECT {self.field_list} FROM documents WHERE documentId=?""",
             (self.document_id,),
         )
-        return OD(
-            dict(
-                zip(
-                    "id, documentId, json, html, title, slug, status".split(", "),
-                    self.curs.fetchone(),
-                )
-            )
-        )
+        return OD(dict(zip(self.fields, self.curs.fetchone())))
 
     def save(self, document):
         self.curs.execute(
-            """DELETE FROM documents WHERE documentId=?""", (self.document_id,)
+            f"""SELECT {self.field_list} FROM documents WHERE documentId=?""",
+            (document.documentId,),
         )
-        title = document.title if "title" in document else "++ NO TITLE ++"
-        self.curs.execute(
-            """INSERT INTO documents (documentId, title, json) VALUES (?, ?, ?)""",
-            (self.document_id, title, json.dumps(document)),
+        rows = self.curs.fetchall()
+        title = (
+            document.title
+            if "title" in document and document.title
+            else "++ NO TITLE ++"
         )
+        slug = slugify(title)
+        if not rows:
+            self.curs.execute(
+                """INSERT INTO documents (documentId, title, json, slug) VALUES (?, ?, ?, ?)""",
+                (self.document_id, title, json.dumps(document), slug),
+            )
+        else:
+            self.curs.execute(
+                """UPDATE documents SET title=?, json=?, slug=? WHERE documentId=?""",
+                (document.title, json.dumps(document), slug, document.documentId),
+            )
         self.conn.commit()
 
     def set_html(self, html, title="** NO TITLE **"):
         self.curs.execute(
             """UPDATE documents SET html=?, title=? WHERE documentId=?""",
-            (html, title, self.document_id),
+            (html, title, self.documentId),
         )
         self.conn.commit()
 
