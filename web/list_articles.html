@@ -1,0 +1,17 @@
+<div class="item mb-5">
+    <div class="media">
+    <table>
+    {% for id, documentId, title, slug in data %}
+    <tr>
+        <td><a href="https://docs.google.com/document/d/{{ documentId }}/">{{ edit }}</a></td>
+        <td><a href="/blog/{{ documentId }}">{{ title }}</a></td>
+        <td><a href="https://docs.google.com/document/d/{{ documentId }}/edit Doc">edit</a></td>
+        <td><a href="/blog/{{ documentId }}/pull">pull</a></td>
+        <td><a href="/blog/{{ documentId }}/load">load</a></td>
+        <td><a href="/blog/{{ documentId }}/delete">delete</a></td>
+        <td>{{ slug or "NO SLUG" }}</td>
+    </tr>
+    {% endfor %}
+    </table>
+    </div><!--//media-->
+</div><!--//item-->
