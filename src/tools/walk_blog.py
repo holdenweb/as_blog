@@ -124,6 +124,8 @@ def render_code_chunk(chunk: List[str]) -> None:
     Note it might be wise to consider adopting
     jinja2 early to remove presentation features
     from this code. For now, there's HTML here.
+
+    TODO: extract code snippets to individual files.
     """
     sep = ""
     result = f"""\
@@ -254,6 +256,7 @@ def main(args=sys.argv) -> None:
     """
     Process a Google docs document into a blog entry.
     """
+    print("ARGS:", args)
     document_id: str = args[1]
     df = SQLDoc(document_id)
     record = df.load()

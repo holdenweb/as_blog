@@ -5,6 +5,7 @@ from datetime import datetime
 from docs import Documents
 from docs import SQLDoc
 from flask import Flask
+from flask import redirect
 from flask import Response
 from flask import send_from_directory
 from flask_wtf import FlaskForm
@@ -68,6 +69,13 @@ def show_page(name):
     template = env.get_template(f"{name}.html")
     result = template.render(**envars)
     return result
+
+
+@app.route("/blog/<id>/delete")
+def delete_page(id):
+    doc = SQLDoc(id)
+    doc.delete()
+    return redirect("/articles/list")
 
 
 @app.route("/blog/<id>")

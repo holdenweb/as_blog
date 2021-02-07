@@ -101,6 +101,12 @@ class SQLDoc(Doc):
         result = self.curs.fetchall()
         return result == [(1,)]
 
+    def delete(self):
+        self.curs.execute(
+            """DELETE FROM documents as d WHERE d.documentId=?""", (self.document_id,)
+        )
+        self.conn.commit()
+
     def load(self) -> OD:
         self.curs.execute(
             f"""SELECT {self.field_list} FROM documents WHERE documentId=?""",
@@ -135,7 +141,7 @@ class SQLDoc(Doc):
     def set_html(self, html, title="** NO TITLE **"):
         self.curs.execute(
             """UPDATE documents SET html=?, title=? WHERE documentId=?""",
-            (html, title, self.documentId),
+            (html, title, self.document_id),
         )
         self.conn.commit()
 
@@ -162,6 +168,7 @@ def authenticate():
 
 
 def main(args=sys.argv):
+    print("ARGS:", args)
     print("Pulling", sys.argv[1])
     doc_file = SQLDoc(document_id=args[1])
     doc_file.pull()
