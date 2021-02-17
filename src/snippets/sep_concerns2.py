@@ -32,8 +32,7 @@ def print_bill1(p_items: List[PurchasedItem]) -> None:
     >>> print_bill1(example_items)
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
-    Total: 297.72
-"""
+    Total: 297.72"""
     item_prices = []
     for it in p_items:
         item_price = (it.unit_price * it.units).quantize(TWO_DP)

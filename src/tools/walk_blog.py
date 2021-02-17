@@ -2,6 +2,7 @@
 Process a document into publishable blog format.
 """
 import json
+import os
 import sys
 import webbrowser
 from functools import partial
@@ -14,6 +15,9 @@ from doc_utils import paragraphs_from
 from docs import SQLDoc
 from hu import ObjectDict as OD
 
+
+MARKER = "# snippet "
+CODE_PATH = "/Users/sholden/Projects/Python/blogAlexSteve/src/snippets"
 
 footnote_map = {}
 font_map = set()
@@ -135,6 +139,24 @@ def render_code_chunk(chunk: List[str]) -> None:
   </code>
 </pre>
 """
+    #
+    # Verify snippet begins with a snippet id, extract code
+    #
+    line_gen = iter(chunk)
+    for line in line_gen:
+        if line.strip():
+            break
+    if not line.startswith(MARKER):
+        sys.exit(f"No chunk identifier found in snippet:\n{line+''.join(line_gen)}")
+    name = line[len(MARKER) :].strip() + ".py"
+    path = os.path.join(CODE_PATH, name)
+    print("PATH:", path)
+    # if os.path.exists(path):
+    # sys.exit(f"File {name!r} already exists.")
+    with open(path, "w") as out_file:
+        out_file.write(line)
+        for line in line_gen:
+            out_file.write(line)
     print(result)
 
 
