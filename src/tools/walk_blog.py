@@ -311,16 +311,12 @@ def main(args=sys.argv) -> None:
         pos = 0
         for rng, ((start, end), chunk) in enumerate(zip(ranges, snippets), start=1):
             # Copy the source lines preceding the snippet
-            out_file.write(f"<<< Copying until next snippet >>>\n")
             for i in range(pos, start):
                 out_file.write(in_lines[i])
             pos = end
             # Copy out the snippet
-            out_file.write(f"<<< Copying extracted snippet >>>\n")
             for line in chunk:
                 print(line, file=out_file)
-            out_file.write(f"<<< Snippet copied >>>\n")
-        out_file.write(f"<<< Copying material after final snippet >>>\n")
         for line in in_lines[pos:-1]:
             out_file.write(line)
     print(out_file.getvalue(), file=sys.stderr)

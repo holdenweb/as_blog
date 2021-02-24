@@ -47,7 +47,7 @@ def print_bill1(p_items: List[PurchasedItem]) -> None:
         item_prices.append(item_price + item_tax)
     total = sum(item_prices)
     print(f"Total: {total:5<.2f}")
-
+# end snippet
 
 # snippet sep-concerns2-4
 @dataclass
