@@ -14,18 +14,16 @@ from doc_utils import para_type
 from doc_utils import paragraphs_from
 from docs import SQLDoc
 from hu import ObjectDict as OD
+from snippets import snippet_ranges
 
 
 MARKER = "# snippet "
-CODE_PATH = "/Users/sholden/Projects/Python/blogAlexSteve/src/snippets"
-
+EXTRACT_PATH = "/Users/sholden/Projects/Python/blogAlexSteve/src/extracted"
+SNIPPET_PATH = "/Users/sholden/Projects/Python/blogAlexSteve/src/snippets"
 footnote_map = {}
 font_map = set()
-
-
-def handle_textRun(tr: OD) -> None:
-    print("**handletextrun")
-    pass
+snippets = []
+snippet_names = []
 
 
 def handle_footnoteReference(fnr: OD) -> None:
@@ -112,30 +110,28 @@ handle_structuralElement = AnyOf(se_handlers)
 
 handle_content = SequenceOf(handle_structuralElement)
 
-pe_handlers = {"textRun": handle_textRun, "footnoteReference": handle_footnoteReference}
-
 # One advantage of string element types is their ability to reference forwards,
 # allowing code to appear in top-down rather than bottom-up ordering.
-
-handle_paragraphElement = AnyOf(pe_handlers)
 
 
 def render_code_chunk(chunk: List[str]) -> None:
     """
     A chunk is simply a list of code lines to be
     set as a single paragraph in monospaced font.
+    Confusingly we also call them snippets.
 
     Note it might be wise to consider adopting
     jinja2 early to remove presentation features
     from this code. For now, there's HTML here.
 
-    TODO: extract code snippets to individual files.
+    TODO: save the snippets to assemble an output file.
     """
-    sep = ""
+    sep = "\n"
+    chunk = "".join(chunk).strip().splitlines()
     result = f"""\
 <pre>
   <code>
-{sep.join(chunk).strip()}
+{sep.join(chunk)}
   </code>
 </pre>
 """
@@ -143,21 +139,19 @@ def render_code_chunk(chunk: List[str]) -> None:
     # Verify snippet begins with a snippet id, extract code
     #
     line_gen = iter(chunk)
-    for line in line_gen:
-        if line.strip():
-            break
+    line = next(line_gen)
     if not line.startswith(MARKER):
         sys.exit(f"No chunk identifier found in snippet:\n{line+''.join(line_gen)}")
-    name = line[len(MARKER) :].strip() + ".py"
-    path = os.path.join(CODE_PATH, name)
-    print("PATH:", path)
-    # if os.path.exists(path):
-    # sys.exit(f"File {name!r} already exists.")
-    with open(path, "w") as out_file:
-        out_file.write(line)
-        for line in line_gen:
-            out_file.write(line)
-    print(result)
+    name = line[len(MARKER) :].strip()
+    article, seq = name.rsplit("-", 1)
+    seq = int(seq)
+    snippets.append(chunk)
+    snippet_names.append(article)
+    pos = len(snippets)
+    if seq != pos:
+        sys.exit(
+            f"Snippet {seq} appears in position {pos}"
+        )  # print(f"{article}, {seq}", file=sys.stderr)
 
 
 def render_structuralElements(p: OD) -> str:
@@ -191,6 +185,10 @@ def render_structuralElements(p: OD) -> str:
 
 
 def handle_font_family(style, style_set):
+    """
+    This was originally intended to condition the use of fontAwesome
+    fonts, but it wojuld be better to use the native Google fonts
+    from the get-go even if this means a radical change to the styles."""
     if "weightedFontFamily" in style and style.weightedFontFamily:
         wff = style.weightedFontFamily
         if "weight" in wff and wff.weight:
@@ -278,7 +276,7 @@ def main(args=sys.argv) -> None:
     """
     Process a Google docs document into a blog entry.
     """
-    print("ARGS:", args)
+    # print("ARGS:", args, file=sys.stderr)
     document_id: str = args[1]
     df = SQLDoc(document_id)
     record = df.load()
@@ -289,6 +287,45 @@ def main(args=sys.argv) -> None:
     #
     paragraph_stream = paragraphs_from(document.body.content)
     render_paragraphs(paragraph_stream)
+    #
+    # Verify that all snippets are tagged for the same article.
+    #
+    all_names = set(snippet_names)
+    if len(all_names) != 1:
+        sys.exit(f"Multiple snippet series[names detected: {', '.join(all_names)}")
+    #
+    # Otherwise we have a snippet "series name" for this series of
+    # snippets, and in the extracted directory a bunch of files named
+    # snippet_series-1.py, snippet_series-2.py and so on.
+    # We use the content of each file to replace the corresponding
+    # snippet in the src/snippets/snippet_series.py file.
+    #
+    series_name = snippet_names[0]
+    snippet_file_path = os.path.join(
+        SNIPPET_PATH, f"{series_name.replace('-', '_')}.py"
+    )
+    out_file = StringIO()
+    with open(snippet_file_path) as in_file:
+        in_lines = in_file.readlines()
+        ranges = snippet_ranges(in_lines)
+        pos = 0
+        for rng, ((start, end), chunk) in enumerate(zip(ranges, snippets), start=1):
+            # Copy the source lines preceding the snippet
+            out_file.write(f"<<< Copying until next snippet >>>\n")
+            for i in range(pos, start):
+                out_file.write(in_lines[i])
+            pos = end
+            # Copy out the snippet
+            out_file.write(f"<<< Copying extracted snippet >>>\n")
+            for line in chunk:
+                print(line, file=out_file)
+            out_file.write(f"<<< Snippet copied >>>\n")
+        out_file.write(f"<<< Copying material after final snippet >>>\n")
+        for line in in_lines[pos:-1]:
+            out_file.write(line)
+    print(out_file.getvalue(), file=sys.stderr)
+    out_file.close()
+
     #
     # Finally, render the footnotes in such a way that the links
     # from the body text correctly reference the anchors.
