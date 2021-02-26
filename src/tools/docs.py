@@ -48,22 +48,21 @@ class Doc:
 
 
 def open_db():
-    if not open_db.conn:
-        open_db.conn = db.connect("docs.db")
-        open_db.curs = open_db.conn.cursor()
-        open_db.curs.execute(
-            """
-            CREATE TABLE IF NOT EXISTS documents (
-                id integer primary key autoincrement,
-                documentId varchar,
-                json varchar,
-                html varchar,
-                title varchar,
-                slug varchar,
-                status varchar,
-                when_published datetime
-            )"""
-        )
+    open_db.conn = db.connect("docs.db")
+    open_db.curs = open_db.conn.cursor()
+    open_db.curs.execute(
+        """
+        CREATE TABLE IF NOT EXISTS documents (
+            id integer primary key autoincrement,
+            documentId varchar,
+            json varchar,
+            html varchar,
+            title varchar,
+            slug varchar,
+            status varchar,
+            when_published datetime
+        )"""
+    )
     return open_db.conn, open_db.curs
 
 
@@ -88,33 +87,44 @@ class SQLDoc(Doc):
 
     def __init__(self, document_id):
         super().__init__(document_id)
-        self.open_db()
 
     def open_db(self):
         self.conn, self.curs = open_db()
 
+    def close_db(self):
+        self.conn.close()
+        self.conn = self.curs = None
+
     def cached(self):
+        self.open_db()
         self.curs.execute(
             """SELECT count(*) FROM documents as d WHERE d.documentId=?""",
             (self.document_id,),
         )
         result = self.curs.fetchall()
+        self.close_db()
         return result == [(1,)]
 
     def delete(self):
+        self.open_db()
         self.curs.execute(
             """DELETE FROM documents as d WHERE d.documentId=?""", (self.document_id,)
         )
         self.conn.commit()
+        self.close_db()
 
     def load(self) -> OD:
+        self.open_db()
         self.curs.execute(
             f"""SELECT {self.field_list} FROM documents WHERE documentId=?""",
             (self.document_id,),
         )
-        return OD(dict(zip(self.fields, self.curs.fetchone())))
+        result = OD(dict(zip(self.fields, self.curs.fetchone())))
+        self.close_db()
+        return result
 
     def save(self, document):
+        self.open_db()
         self.curs.execute(
             f"""SELECT {self.field_list} FROM documents WHERE documentId=?""",
             (document.documentId,),
@@ -123,7 +133,7 @@ class SQLDoc(Doc):
         title = (
             document.title
             if "title" in document and document.title
-            else "++ NO TITLE ++"
+            else "+++ NO TITLE! +++"
         )
         slug = slugify(title)
         if not rows:
@@ -137,13 +147,16 @@ class SQLDoc(Doc):
                 (document.title, json.dumps(document), slug, document.documentId),
             )
         self.conn.commit()
+        self.close_db()
 
     def set_html(self, html, title="** NO TITLE **"):
+        self.open_db()
         self.curs.execute(
             """UPDATE documents SET html=?, title=? WHERE documentId=?""",
             (html, title, self.document_id),
         )
         self.conn.commit()
+        self.close_db()
 
 
 def authenticate():
