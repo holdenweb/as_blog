@@ -136,12 +136,14 @@ def render_code_chunk(chunk: List[str]) -> None:
 </pre>
 """
     #
-    # Verify snippet begins with a snippet id, extract code
+    # Verify snippet begins with a snippet id, extract code & name
     #
     line_gen = iter(chunk)
     line = next(line_gen)
     if not line.startswith(MARKER):
-        sys.exit(f"No chunk identifier found in snippet:\n{line+''.join(line_gen)}")
+        sys.exit(
+            f"No chunk identifier found in snippet:\n{line+sep+sep.join(line_gen)}"
+        )
     name = line[len(MARKER) :].strip()
     article, seq = name.rsplit("-", 1)
     seq = int(seq)
@@ -152,6 +154,7 @@ def render_code_chunk(chunk: List[str]) -> None:
         sys.exit(
             f"Snippet {seq} appears in position {pos}"
         )  # print(f"{article}, {seq}", file=sys.stderr)
+    print(result)
 
 
 def render_structuralElements(p: OD) -> str:
@@ -292,20 +295,24 @@ def main(args=sys.argv) -> None:
     #
     all_names = set(snippet_names)
     if len(all_names) != 1:
-        sys.exit(f"Multiple snippet series[names detected: {', '.join(all_names)}")
+        sys.exit(f"Multiple snippet series: {', '.join(all_names)}")
     #
     # Otherwise we have a snippet "series name" for this series of
     # snippets, and in the extracted directory a bunch of files named
     # snippet_series-1.py, snippet_series-2.py and so on.
     # We use the content of each file to replace the corresponding
-    # snippet in the src/snippets/snippet_series.py file.
+    # snippet in the src/snippets/snippet_series.py file, producing
+    # a src/snippets/snippet_series.py_new file containing the
+    # extracted snippets. If this differs from the source file then
+    # editing has taken place.
     #
     series_name = snippet_names[0]
     snippet_file_path = os.path.join(
         SNIPPET_PATH, f"{series_name.replace('-', '_')}.py"
     )
-    out_file = StringIO()
-    with open(snippet_file_path) as in_file:
+    with open(snippet_file_path) as in_file, open(
+        snippet_file_path + "_new", "w"
+    ) as out_file:
         in_lines = in_file.readlines()
         ranges = snippet_ranges(in_lines)
         pos = 0
@@ -319,9 +326,6 @@ def main(args=sys.argv) -> None:
                 print(line, file=out_file)
         for line in in_lines[pos:-1]:
             out_file.write(line)
-    print(out_file.getvalue(), file=sys.stderr)
-    out_file.close()
-
     #
     # Finally, render the footnotes in such a way that the links
     # from the body text correctly reference the anchors.
