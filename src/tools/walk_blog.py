@@ -26,29 +26,10 @@ snippets = []
 snippet_names = []
 
 
-def handle_footnoteReference(fnr: OD) -> None:
-    """
-    Besides rendering a link to the footnote in the body of the output,
-    we must also remember the footnoteId against the footnoteNumber, in
-    order to be able to produce the actual footnote contents once the
-    whole document body has been parsed.
-
-    A simple implementation has been chosen initially, which ignores
-    the textStyle in the reference. It uses a global footnote_map table
-    to store these references.
-    """
-    print(
-        f"""<a href=#footnote-{fnr.footnoteNumber}">[{fnr.footnoteNumber}]</a>""",
-        end="",
-    )
-    footnote_map[fnr.footnoteNumber] = fnr.footnoteId
-
-
 def handle_paragraph(p: OD) -> None:
     """
     A paragraph is a sequence of paragraphElements.
     """
-    print("**handle_paragraph")
     for pe in p.elements:
         handle_paragraphElement(pe)
 
@@ -111,7 +92,7 @@ handle_structuralElement = AnyOf(se_handlers)
 handle_content = SequenceOf(handle_structuralElement)
 
 # One advantage of string element types is their ability to reference forwards,
-# allowing code to appear in top-down rather than bottom-up ordering.
+# allowing code to appear in top-down rather than bottom-up ordering. (???)
 
 
 def render_code_chunk(chunk: List[str]) -> None:
@@ -189,9 +170,11 @@ def render_structuralElements(p: OD) -> str:
 
 def handle_font_family(style, style_set):
     """
-    This was originally intended to condition the use of fontAwesome
-    fonts, but it wojuld be better to use the native Google fonts
-    from the get-go even if this means a radical change to the styles."""
+    TODO: This was originally intended to condition the use of fontAwesome
+    fonts, but it would be better to use the native Google fonts from the
+    get-go even if this means a radical change to the styles.
+    """
+
     if "weightedFontFamily" in style and style.weightedFontFamily:
         wff = style.weightedFontFamily
         if "weight" in wff and wff.weight:
@@ -216,20 +199,20 @@ def handle_bold(style, style_set):
         style_set["font-weight"] = "bold"
 
 
-def render_normal_text(p: OD) -> None:
+def render_normal_text(p: OD) -> str:
     result = f"""\
 <p class="normal_text">
 {render_structuralElements(p)}
 </p>
 """
-    print(result)
+    return result
 
 
-def render_heading(h_type, p):
+def render_heading(h_type, p) -> str:
     # TODO: should insert correct class, or possibly none at all
     result = f"""\
 <{h_type} class="normal_text">{render_structuralElements(p)}</{h_type}>"""
-    print(result)
+    return result
 
 
 render_heading_1 = partial(render_heading, "h1")
@@ -246,6 +229,7 @@ renderer = {
 
 def render_paragraphs(paragraph_stream):
     chunk = []
+    fragments = []
     for para in paragraph_stream:
         p_type, elements = para_type(para, len(chunk) != 0)
         #
@@ -262,24 +246,24 @@ def render_paragraphs(paragraph_stream):
         #
         else:
             if chunk:  # Emit any accumulated chunk
-                render_code_chunk(chunk)
+                fragments.append(render_code_chunk(chunk))
                 chunk = []
             # Outside a code chunk ignore blank paras
             if len(elements) == 1 and elements[0].textRun.content == "\n":
                 continue
-            renderer[p_type](para)  # call handler selected by type
+            fragments.append(renderer[p_type](para))  # call handler selected by type
         # Handle edge case where post ends with a code sequence.
     else:
         if chunk:
-            render_code_chunk(chunk)
+            fragments.append(render_code_chunk(chunk))
             chunk = []
+    return "".join(fragments)
 
 
 def main(args=sys.argv) -> None:
     """
     Process a Google docs document into a blog entry.
     """
-    # print("ARGS:", args, file=sys.stderr)
     document_id: str = args[1]
     df = SQLDoc(document_id)
     record = df.load()
@@ -289,43 +273,45 @@ def main(args=sys.argv) -> None:
     # Render the document body.
     #
     paragraph_stream = paragraphs_from(document.body.content)
-    render_paragraphs(paragraph_stream)
+    fragments = [render_paragraphs(paragraph_stream)]
     #
     # Verify that all snippets are tagged for the same article.
+    # TODO: skip this whole section if there are no snippets!
     #
-    all_names = set(snippet_names)
-    if len(all_names) != 1:
-        sys.exit(f"Multiple snippet series: {', '.join(all_names)}")
-    #
-    # Otherwise we have a snippet "series name" for this series of
-    # snippets, and in the extracted directory a bunch of files named
-    # snippet_series-1.py, snippet_series-2.py and so on.
-    # We use the content of each file to replace the corresponding
-    # snippet in the src/snippets/snippet_series.py file, producing
-    # a src/snippets/snippet_series.py_new file containing the
-    # extracted snippets. If this differs from the source file then
-    # editing has taken place.
-    #
-    series_name = snippet_names[0]
-    snippet_file_path = os.path.join(
-        SNIPPET_PATH, f"{series_name.replace('-', '_')}.py"
-    )
-    with open(snippet_file_path) as in_file, open(
-        snippet_file_path + "_new", "w"
-    ) as out_file:
-        in_lines = in_file.readlines()
-        ranges = snippet_ranges(in_lines)
-        pos = 0
-        for rng, ((start, end), chunk) in enumerate(zip(ranges, snippets), start=1):
-            # Copy the source lines preceding the snippet
-            for i in range(pos, start):
-                out_file.write(in_lines[i])
-            pos = end
-            # Copy out the snippet
-            for line in chunk:
-                print(line, file=out_file)
-        for line in in_lines[pos:-1]:
-            out_file.write(line)
+    if snippet_names:
+        all_names = set(snippet_names)
+        if len(all_names) != 1:
+            sys.exit(f"Multiple snippet series: {', '.join(all_names)}")
+        #
+        # Otherwise we have a snippet "series name" for this series of
+        # snippets, and in the extracted directory a bunch of files named
+        # snippet_series-1.py, snippet_series-2.py and so on.
+        # We use the content of each file to replace the corresponding
+        # snippet in the src/snippets/snippet_series.py file, producing
+        # a src/snippets/snippet_series.py_new file containing the
+        # extracted snippets. If this differs from the source file then
+        # editing has taken place.
+        #
+        series_name = snippet_names[0]
+        snippet_file_path = os.path.join(
+            SNIPPET_PATH, f"{series_name.replace('-', '_')}.py"
+        )
+        with open(snippet_file_path) as in_file, open(
+            snippet_file_path + "_new", "w"
+        ) as out_file:
+            in_lines = in_file.readlines()
+            ranges = snippet_ranges(in_lines)
+            pos = 0
+            for rng, ((start, end), chunk) in enumerate(zip(ranges, snippets), start=1):
+                # Copy the source lines preceding the snippet
+                for i in range(pos, start):
+                    out_file.write(in_lines[i])
+                pos = end
+                # Copy out the snippet
+                for line in chunk:
+                    fragments.append(line, file=out_file)
+            for line in in_lines[pos:-1]:
+                out_file.write(line)
     #
     # Finally, render the footnotes in such a way that the links
     # from the body text correctly reference the anchors.
@@ -334,20 +320,26 @@ def main(args=sys.argv) -> None:
     #       whole section with jinja2
     #
     if footnote_map:
-        print(
+        fragments.append(
             """<h3>Footnotes</h3>
         <ol id="footnotes">
 """
         )
         for number, id in footnote_map.items():
 
-            print(f"""        <li id="footnote-{number}">""")
-            render_paragraphs(paragraphs_from(document.footnotes[id].content))
-        print(
+            fragments.append(f"""        <li id="footnote-{number}">""")
+            fragments.append(
+                render_paragraphs(paragraphs_from(document.footnotes[id].content))
+            )
+        fragments.append(
             """
             </ol>
 """
         )
+    #
+    # Let's just try and print it for now!
+    #
+    print("".join(fragments))
 
 
 def load(args: List[str] = sys.argv) -> None:
