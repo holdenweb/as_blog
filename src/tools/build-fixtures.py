@@ -5,8 +5,8 @@ from decimal import Decimal
 
 from dataclasses import dataclass
 from hu import ObjectDict
-from sep_concerns_2 import make_line_items
-from sep_concerns_2 import PurchasedItem
+from sep_concerns2 import make_line_items
+from sep_concerns2 import PurchasedItem
 
 
 @dataclass

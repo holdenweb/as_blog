@@ -4,12 +4,12 @@ from decimal import Decimal
 from typing import List
 from typing import Optional
 
-from sep_concerns_2 import example_items  # noqa: F401
-from sep_concerns_2 import LineItem  # noqa: F401
-from sep_concerns_2 import make_line_items
-from sep_concerns_2 import print_detail
-from sep_concerns_2 import PurchasedItem
-from sep_concerns_2 import total_sum4
+from sep_concerns2 import example_items  # noqa: F401
+from sep_concerns2 import LineItem  # noqa: F401
+from sep_concerns2 import make_line_items
+from sep_concerns2 import print_detail
+from sep_concerns2 import PurchasedItem
+from sep_concerns2 import total_sum4
 
 
 # snippet sep-concerns3-1

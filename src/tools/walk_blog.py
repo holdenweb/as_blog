@@ -339,18 +339,14 @@ def main(args=sys.argv) -> None:
     #
     # Let's just try and print it for now!
     #
-    print("".join(fragments))
+    return "".join(fragments)
 
 
 def load(args: List[str] = sys.argv) -> None:
     """
     Divert stdout to a StringIO for generation, then store in SQLite.
     """
-    save_stdout = sys.stdout
-    sys.stdout = s = StringIO()
-    main(args)
-    result = s.getvalue()
-    sys.stdout = save_stdout
+    result = main(args)
     document_id: str = args[1]
     df = SQLDoc(document_id)
     doc = OD(df.load())
@@ -376,4 +372,4 @@ def showjson(args: List[str] = sys.argv) -> None:
 
 
 if __name__ == "__main__":
-    load()
+    print(load())
