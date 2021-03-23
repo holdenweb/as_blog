@@ -1,5 +1,5 @@
 pytest:
-	pytest --doctest-modules -v src/snippets
+	pytest --doctest-modules src/snippets
 
 doctest:
 	python -m doctest -v src/snippets/*.py

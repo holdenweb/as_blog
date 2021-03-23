@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import shelve
 from collections import defaultdict
 from decimal import Decimal
@@ -26,8 +27,11 @@ def create_test_store():
     0
     []
     """
-    store = shelve.open("test", flag="n")
-    store.close()
+    if os.path.exists("test.db"):
+        os.unlink("test.db")
+    with shelve.open("test", flag="n") as db:
+        assert list(db.keys()) == []
+        pass
 
 
 class Storage:
@@ -42,24 +46,24 @@ class Storage:
     def __init__(self, store: str = "bills"):
         self.store = store
 
-    def dump(self):
-        """
-        Dump the storage content in JSON format. e.g.:
-        >>> create_test_store()
-        >>> Storage('test').dump()
-        {}
-        """
-        with shelve.open(self.store) as self.db:
-            content = json.dumps(dict(self.db.items()), indent=3)
-            print(content)
-        # with shelve.open(self.store) as self.db:
-        # for (date, bill_dict) in self.db.items():
-        # print(date)
-        # for (user, bills) in bill_dict.items():
-        # print(user)
-        # print(*bills, sep='\n')
+    # def dump(self):
+    # """
+    # Dump the storage content in JSON format. e.g.:
+    # >>> create_test_store()
+    # >>> Storage('test').dump()
+    # {}
+    # """
+    # with shelve.open(self.store) as self.db:
+    # content = json.dumps(dict(self.db.items()), indent=3)
+    # print(content)
+    ## with shelve.open(self.store) as self.db:
+    ## for (date, bill_dict) in self.db.items():
+    ## print(date)
+    ## for (user, bills) in bill_dict.items():
+    ## print(user)
+    ## print(*bills, sep='\n')
 
-    def get(self, d: datetime.date):
+    def _get(self, d: datetime.date):
         """
         Retrieve a given day's bills. e.g.:
         >>> create_test_store()
@@ -79,24 +83,28 @@ class Storage:
         >>>
         """
         k = d.isoformat()
-        with shelve.open(self.store) as self.db:
-            if k in self.db:
-                bills = self.db[k]
-            else:
-                bills = {}
-            return bills
+        if k in self.db:
+            bills = self.db[k]
+        else:
+            bills = {}
+        return bills
 
-    def put(self, d: datetime.date, bills):
+    def _put(self, d: datetime.date, bills):
         """
-        Update the bills for a particular date. e.g.
+        Update the "bills" for a particular date. e.g.
         >>> create_test_store()
-        >>> Storage('test').put(datetime.date(2019, 1, 1), ['0123456789'])
-        >>> print(Storage('test').get(datetime.date(2019, 1, 1)))
+        >>> store = Storage('test')
+        >>> date = datetime.date(2019, 1, 1)
+        >>> with shelve.open(store.store) as store.db:
+        ...     assert len(list(store.db.keys())) == 0
+        ...     store._put(date, ['0123456789'])
+        ...     print(store._get(date))
+        ...     print(list(store.db.keys()))
         ['0123456789']
+        ['2019-01-01']
         """
         k = d.isoformat()
-        with shelve.open(self.store) as self.db:
-            self.db[k] = bills
+        self.db[k] = bills
 
     def bills_for_date(self, d: datetime.date):
         """
@@ -112,13 +120,12 @@ class Storage:
         >>> print(len(bills['Steve'][0]))
         2
         """
-        bills = self.get(d)
-        return bills
+        with shelve.open(self.store) as self.db:
+            bills = self._get(d)
+            return bills
 
     # snippet sep-concerns5-1
-    def bills_for_range_by_user(
-        self, sd: datetime.date, days: int, store: str = "bills"
-    ):
+    def bills_for_range_by_user(self, sd: datetime.date, days: int):
         """
         Return a dict keyed by user whose values
         are a list of all bills for that customer
@@ -138,11 +145,11 @@ class Storage:
         Save a bill against a specific date and user.
         """
         with shelve.open(self.store) as self.db:
-            bills = self.get(d)
+            bills = self._get(d)
             if user not in bills:
                 bills[user] = []
             bills[user].append(line_items)
-            self.put(d, bills)
+            self._put(d, bills)
 
 
 def print_and_save_bill2(
@@ -157,7 +164,7 @@ def print_and_save_bill2(
     Total: 297.72
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
-
+    >>>
     The bill’s line items should now have been saved to `store`.
     TODO: split into separate print and save routines so they can
     be called separately for testing purposes.
@@ -203,7 +210,7 @@ def sales_tax_for_date2(date: datetime.date, store: str = "bills") -> Decimal:
 
 # snippet sep-concerns5-2
 def print_discount_report(
-    sd: datetime.date, days: int, threshold: Decimal, store="bills"
+    sd: datetime.date, days: int, threshold: Decimal, store: str = "bills"
 ):
     """
     Print a list of all customers whose spending
@@ -219,20 +226,35 @@ def print_discount_report(
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
 
-    The bill’s line items should now have been saved to `store`.
-    >>> s = shelve.open('test')
-    >>> len(s)
+    The bill’s line items should now have been saved to the store.
+    >>> with shelve.open('test') as s:
+    ...     len(s)
+    ...     list(s.keys())
+    ...
     1
-    >>> list(s.keys())
     ['2021-01-01']
-    >>> s.close()
-    >>> print_discount_report(datetime.date(2021, 1, 1), 1, Decimal("0"))
-    Something
+    >>> print_discount_report(sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal('0'), store='test')
+    steve                   297.72
     """
+    result = {}
     storage = Storage(store)
     bills_by_user = storage.bills_for_range_by_user(sd, days)
-    print(sd, len(bills_by_user))
-    for user, bills in bills_by_user:
+    for user, bills in bills_by_user.items():
+        user_total = Decimal("0")
         for bill in bills:
             for line_item in bill:
-                print(">>", line_item)
+                user_total += line_item.total_price
+        result[user] = user_total
+    for user, total in result.items():
+        print(f"{user:20s} {total:9.2f}")
+
+
+if __name__ == "__main__":
+
+    create_test_store()
+    print_and_save_bill2(
+        example_items, date=datetime.date(2021, 1, 1), user="steve", store="test"
+    )
+    print_discount_report(
+        sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal("0"), store="test"
+    )
