@@ -1,5 +1,6 @@
 pytest:
-	pytest --doctest-modules src/snippets
+	pytest -v --doctest-modules src/snippets
+	pytest -v tests
 
 fullpytest:
 	pytest --doctest-modules -vv src/snippets

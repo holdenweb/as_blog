@@ -1,5 +1,4 @@
 import datetime
-import json
 import os
 import shelve
 from collections import defaultdict
