@@ -15,7 +15,7 @@ from sep_concerns2 import total_sum4
 from sep_concerns2 import TWO_DP
 
 
-# snippet sep-concerns5-1
+# snippet sep-concerns7-1
 def create_test_store():
     """
     Create a new 'test' database.
@@ -66,7 +66,7 @@ class Storage:
         """
         Retrieve a given day's bills. e.g.:
         >>> create_test_store()
-        >>> print_and_save_bill2(example_items, store='test', user='steve', date=datetime.date(2020, 1, 1))
+        >>> print_and_save_bill2(example_items, store=Storage('test'), user='steve', date=datetime.date(2020, 1, 1))
         Total: 297.72
         6  Bordeaux         (wine            ) 10% 21.12 139.39
         6  Viognier         (wine            ) 10% 23.99 158.33
@@ -109,7 +109,7 @@ class Storage:
         """
         Retrieve the bills for a particular date.
         >>> create_test_store()    # Isolate tests from production data
-        >>> print_and_save_bill2(example_items, user='Steve', store='test', date=datetime.date(2020, 1, 1))
+        >>> print_and_save_bill2(example_items, user='Steve', store=Storage(('test')), date=datetime.date(2020, 1, 1))
         Total: 297.72
         6  Bordeaux         (wine            ) 10% 21.12 139.39
         6  Viognier         (wine            ) 10% 23.99 158.33
@@ -123,7 +123,7 @@ class Storage:
             bills = self._get(d)
             return bills
 
-    # snippet sep-concerns5-1
+    # snippet sep-concerns7-1
     def bills_for_range_by_user(self, sd: datetime.date, days: int):
         """
         Return a dict keyed by user whose values
@@ -154,12 +154,12 @@ class Storage:
 def print_and_save_bill2(
     p_items: List[PurchasedItem],
     user: str = "",
-    store: str = "bills",
+    store: Storage = None,
     date: Optional[datetime.date] = None,
 ) -> None:
     """Output total, then item prices with sales tax. For example:
     >>> create_test_store()    # Isolate tests from production data
-    >>> print_and_save_bill2(example_items, store='test', date=datetime.date(2020, 1, 1))
+    >>> print_and_save_bill2(example_items, store=Storage('test'), date=datetime.date(2020, 1, 1))
     Total: 297.72
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
@@ -173,31 +173,31 @@ def print_and_save_bill2(
     print_detail(line_items)
     if date is None:
         date = datetime.date.today()
-    storage = Storage(store)
+    storage = Storage("bills") if store is None else store
     storage.write_order(date, user, line_items)
 
 
-def sales_tax_for_date2(date: datetime.date, store: str = "bills") -> Decimal:
+def sales_tax_for_date2(date: datetime.date, store: Storage = None) -> Decimal:
     """Retrieve total sales tax for a day from the `store`. For example:
     >>> create_test_store()
     >>> print_and_save_bill2(
     ...     example_items,
     ...     date=datetime.date(2021, 1, 1),
     ...     user='steve',
-    ...     store='test')
+    ...     store=Storage('test'))
     Total: 297.72
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
 
     The bill’s line items should now have been saved to `store`.
-    >>> print(sales_tax_for_date2(datetime.date(1999, 1, 1), store='test'))
+    >>> print(sales_tax_for_date2(datetime.date(1999, 1, 1), store=Storage('test')))
     0
 
     (there were no sales on that date).
-    >>> print(sales_tax_for_date2(datetime.date(2021, 1, 1), store='test'))
+    >>> print(sales_tax_for_date2(datetime.date(2021, 1, 1), store=Storage('test')))
     27.06
     """
-    storage = Storage(store)
+    storage = Storage("bills") if store is None else store
     bills = storage.bills_for_date(date)
     sales_tax_total = Decimal(0)
     for user in bills:
@@ -207,9 +207,9 @@ def sales_tax_for_date2(date: datetime.date, store: str = "bills") -> Decimal:
     return sales_tax_total
 
 
-# snippet sep-concerns5-2
+# snippet sep-concerns7-2
 def print_discount_report(
-    sd: datetime.date, days: int, threshold: Decimal, store: str = "bills"
+    sd: datetime.date, days: int, threshold: Decimal, store: Storage = None
 ):
     """
     Print a list of all customers whose spending
@@ -220,7 +220,7 @@ def print_discount_report(
     ...     example_items,
     ...     date=datetime.date(2021, 1, 1),
     ...     user='steve',
-    ...     store='test')
+    ...     store=Storage('test'))
     Total: 297.72
     6  Bordeaux         (wine            ) 10% 21.12 139.39
     6  Viognier         (wine            ) 10% 23.99 158.33
@@ -232,11 +232,11 @@ def print_discount_report(
     ...
     1
     ['2021-01-01']
-    >>> print_discount_report(sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal('0'), store='test')
+    >>> print_discount_report(sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal('0'), store=Storage('test'))
     steve                   297.72
     """
     result = {}
-    storage = Storage(store)
+    storage = Storage("bills") if store is None else store
     bills_by_user = storage.bills_for_range_by_user(sd, days)
     for user, bills in bills_by_user.items():
         user_total = Decimal("0")
