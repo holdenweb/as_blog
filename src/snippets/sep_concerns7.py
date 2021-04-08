@@ -249,11 +249,12 @@ def print_discount_report(
 
 
 if __name__ == "__main__":
-
+    "Ad  hoc tests added for convenience during testing."
     create_test_store()
+    store = Storage("test")
     print_and_save_bill2(
-        example_items, date=datetime.date(2021, 1, 1), user="steve", store="test"
+        example_items, date=datetime.date(2021, 1, 1), user="steve", store=store
     )
     print_discount_report(
-        sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal("0"), store="test"
+        sd=datetime.date(2021, 1, 1), days=1, threshold=Decimal("0"), store=store
     )
