@@ -1,0 +1,24 @@
+{
+    "products": {
+        "Bordeaux": ["wine", "10.00"],
+        "Viognier": ["wine", "20.00"],
+        "Penny White": ["wine", "0.01"]
+    },
+    "users": ["Steve", "Alex", "Fred"],
+    "orders": {
+        "2010-12-01":[
+            ["Steve", [["Viognier", 6], ["Bordeaux", 6]]],
+            ["Alex", [["Bordeaux", 12], ["Viognier", 12]]]
+        ],
+        "2010-12-08": [
+            ["Steve", [["Viognier", 6]]],
+            ["Alex", [["Bordeaux", 12]]],
+            ["Steve", [["Bordeaux", 6]]],
+            ["Alex", [["Viognier", 12]]]
+        ],
+        "2010-12-15": [
+            ["Fred", [["Bordeaux", 10], ["Viognier", 10]]]
+        ]
+    },
+    "tax_percent": {"beer": 8, "wine": 10, "spirits": 13, "staples": 0}
+}
