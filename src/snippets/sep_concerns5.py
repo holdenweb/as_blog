@@ -26,9 +26,13 @@ def create_test_store():
     0
     []
     """
-    if os.path.exists("test.db"):
-        os.unlink("test.db")
-    with shelve.open("test", flag="n") as db:
+    return create_store("test")
+
+
+def create_store(name):
+    if os.path.exists(f"{name}.db"):
+        os.unlink(f"{name}.db")
+    with shelve.open(name, flag="n") as db:
         assert list(db.keys()) == []
         pass
 
@@ -42,8 +46,8 @@ class Storage:
     one list per order.
     """
 
-    def __init__(self, store: str = "bills"):
-        self.store = store
+    def __init__(self, store_name: str = "bills"):
+        self.store = store_name
 
     # def dump(self):
     # """
