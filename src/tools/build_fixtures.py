@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import shelve
@@ -7,8 +8,10 @@ from decimal import Decimal
 
 from dataclasses import dataclass
 from hu import ObjectDict
-from sep_concerns2 import make_line_items
-from sep_concerns2 import PurchasedItem
+from sep_concerns5 import create_store
+from sep_concerns5 import Storage
+from sep_concerns7 import make_line_items
+from sep_concerns7 import PurchasedItem
 
 DATA_DIR = "test_data"
 
@@ -43,9 +46,14 @@ def build_fixture(unit):
                 ]
                 result_dict[date].append((user, make_line_items(p_items)))
 
-    with shelve.open(os.path.join(DATA_DIR, "fixtures", f"{unit}.dbm")) as out_s:
-        for date, orders in result_dict.items():
-            out_s[date] = orders
+    # Write orders to storage
+    db_path = os.path.join(DATA_DIR, "fixtures", f"{unit}")
+    create_store(db_path)
+    store = Storage(db_path)
+    for date, orders in result_dict.items():
+        date = datetime.datetime.strptime(date, "%Y-%m-%d")
+        for order in orders:
+            store.write_order(date, *order)
 
 
 def default_key(data, key, unit):
@@ -54,7 +62,7 @@ def default_key(data, key, unit):
             with open(os.path.join(DATA_DIR, "defaults", f"{key}.json")) as dflt_file:
                 data[key] = json.load(dflt_file, object_hook=ObjectDict)
         except Exception:
-            sys.exit(f"Fixture {unit!r}: could not find data for {key}.")
+            sys.exit(f"Fixture {unit!r}: no data and no defaults for {key!r}.")
 
 
 def main(args=sys.argv[1:]):
