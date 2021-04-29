@@ -47,7 +47,7 @@ def build_fixture(unit):
                 result_dict[date].append((user, make_line_items(p_items)))
 
     # Write orders to storage
-    db_path = os.path.join(DATA_DIR, "fixtures", f"{unit}")
+    db_path = location(unit)
     create_store(db_path)
     store = Storage(db_path)
     for date, orders in result_dict.items():
@@ -56,13 +56,17 @@ def build_fixture(unit):
             store.write_order(date, *order)
 
 
+def location(unit, dir="fixtures"):
+    return os.path.join(DATA_DIR, "fixtures", f"{unit}")
+
+
 def default_key(data, key, unit):
     if key not in data:
         try:
             with open(os.path.join(DATA_DIR, "defaults", f"{key}.json")) as dflt_file:
                 data[key] = json.load(dflt_file, object_hook=ObjectDict)
         except Exception:
-            sys.exit(f"Fixture {unit!r}: no data and no defaults for {key!r}.")
+            sys.exit(f"Fixture {unit!r}: neither data nor defaults for {key!r}.")
 
 
 def main(args=sys.argv[1:]):
@@ -71,4 +75,16 @@ def main(args=sys.argv[1:]):
 
 
 if __name__ == "__main__":
-    main()
+    """
+    Discovery code used to verify understanding of operations.
+    Note that until the assertions are moved into Storage this
+    code only works for dbm-based Storages (shelve).
+    """
+    paths = (p1, p2) = ("test_data_01", "test_data_02")
+    main(paths)
+    assert all(os.path.exists(location(p)) for p in paths)
+    with shelve.open(location(p1)) as s1, shelve.open(location(p2)) as s2:
+        assert s1 and s2  # Not newly-created!!
+        for k in s1:
+            assert s1[k] == s2[k]
+        assert s1 == s2

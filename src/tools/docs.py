@@ -181,7 +181,6 @@ def authenticate():
 
 
 def main(args=sys.argv):
-    print("ARGS:", args)
     print("Pulling", sys.argv[1])
     doc_file = SQLDoc(document_id=args[1])
     doc_file.pull()
