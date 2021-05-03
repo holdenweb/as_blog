@@ -260,7 +260,7 @@ def render_paragraphs(paragraph_stream):
     return "".join(fragments)
 
 
-def main(args=sys.argv) -> None:
+def main(args=sys.argv) -> str:
     """
     Process a Google docs document into a blog entry.
     """
@@ -309,7 +309,7 @@ def main(args=sys.argv) -> None:
                 pos = end
                 # Copy out the snippet
                 for line in chunk:
-                    fragments.append(line, file=out_file)
+                    fragments.append(line)
             for line in in_lines[pos:-1]:
                 out_file.write(line)
     #
