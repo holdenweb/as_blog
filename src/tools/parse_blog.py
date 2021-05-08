@@ -196,10 +196,9 @@ class MyDoc:
 
 
 def main(document_id: str):
-    """
+    """"""
+    df = db.document(document_id)
 
-    """
-    df = Doc(document_id).open()
     document = json.loads(df.read())
     document = ObjectDict(document)
     parser = MyDoc()

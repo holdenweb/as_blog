@@ -135,7 +135,7 @@ def render_code_chunk(chunk: List[str]) -> None:
         sys.exit(
             f"Snippet {seq} appears in position {pos}"
         )  # print(f"{article}, {seq}", file=sys.stderr)
-    print(result)
+    return result
 
 
 def render_structuralElements(p: OD) -> str:
@@ -372,4 +372,4 @@ def showjson(args: List[str] = sys.argv) -> None:
 
 
 if __name__ == "__main__":
-    print(load())
+    load()
