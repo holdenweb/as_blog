@@ -22,6 +22,7 @@ Flask-Bootstrap = "^3.3.7"
 python-slugify = "^4.0.1"
 mongoengine = "^0.22.1"
 python-dotenv = "^0.15.0"
+mongomock = "^3.22.1"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.20"
@@ -38,7 +39,7 @@ requires = ["poetry>=0.12", "setuptools", "wheel"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry.scripts]
-pull = 'docs:main'
+pull = 'docs:pull'
 view = 'walk_blog:main'
 load = 'walk_blog:load'
 browse = 'walk_blog:browse'

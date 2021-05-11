@@ -12,8 +12,10 @@ from typing import List
 from doc_utils import element_type
 from doc_utils import para_type
 from doc_utils import paragraphs_from
-from docs import SQLDoc
+from docs import WebPage
 from hu import ObjectDict as OD
+from mongoengine import connect
+from mongoengine import disconnect
 from snippets import snippet_ranges
 
 
@@ -260,15 +262,17 @@ def render_paragraphs(paragraph_stream):
     return "".join(fragments)
 
 
-def main(args=sys.argv) -> str:
+def main(args=sys.argv[1:]) -> str:
     """
     Process a Google docs document into a blog entry.
     """
-    document_id: str = args[1]
-    df = SQLDoc(document_id)
-    record = df.load()
-    document = OD(json.loads(record.json))
-    document = OD(document)
+    web_db = connect("WebDB")
+    documentId: str = args[0]
+    record = WebPage.objects(documentId=documentId).first()
+    if not record:
+        sys.exit("You need to pull the document before you can load it.")
+    document = OD(record.json)
+    assert "footnotes" in document
     #
     # Render the document body.
     #
@@ -276,7 +280,6 @@ def main(args=sys.argv) -> str:
     fragments = [render_paragraphs(paragraph_stream)]
     #
     # Verify that all snippets are tagged for the same article.
-    # TODO: skip this whole section if there are no snippets!
     #
     if snippet_names:
         all_names = set(snippet_names)
@@ -342,32 +345,33 @@ def main(args=sys.argv) -> str:
     return "".join(fragments)
 
 
-def load(args: List[str] = sys.argv) -> None:
+def load(args: List[str] = sys.argv[1:]) -> None:
     """
-    Divert stdout to a StringIO for generation, then store in SQLite.
+    Generate HTML from the JSON then store.
     """
-    result = main(args)
-    document_id: str = args[1]
-    df = SQLDoc(document_id)
-    doc = OD(df.load())
-    df.set_html(result, doc.title)
+    web_db = connect("WebDB")
+    html = main(args)
+    doc_id: str = args[0]
+    df = WebPage.objects.get(documentId=doc_id)
+    df.html = html
+    df.save()
 
 
-def browse(args: List[str] = sys.argv) -> None:
+def browse(args: List[str] = sys.argv[1:]) -> None:
     """
     Serve up an already-loaded page in a new browser window.
     """
-    document_id: str = args[1]
+    document_id: str = args[0]
     webbrowser.open(f"http://localhost:5000/blog/{document_id}")
 
 
-def showjson(args: List[str] = sys.argv) -> None:
+def showjson(args: List[str] = sys.argv[1:]) -> None:
     """
     Output the raw JSON from the document store.
     """
-    document_id: str = args[1]
-    df = SQLDoc(document_id)
-    record = df.load()
+    web_db = connect("WebDB")
+    document_id: str = args[0]
+    record = WebPage.objects.get(id=document_id)
     print(record.json)
 
 

@@ -2,8 +2,7 @@ import json
 import sys
 from datetime import datetime
 
-from docs import Documents
-from docs import SQLDoc
+from docs import WebPage
 from flask import Flask
 from flask import redirect
 from flask import Response
@@ -13,6 +12,7 @@ from hu import ObjectDict as OD
 from jinja2 import ChoiceLoader
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
+from mongoengine import connect
 from wtforms import StringField
 from wtforms.validators import DataRequired
 
@@ -22,6 +22,7 @@ env = Environment(
     )
 )
 
+web_db = connect("WebDB")
 
 app = Flask(__name__)
 
@@ -31,22 +32,17 @@ app.config["SECRET_KEY"] = b'_5#y2L"F4Q8z\n\xec]/'
 item_vars = OD(
     {
         "heading": "This is the heading - independent of the item title?",
-        "when_published": "just now",
-        "reading_time": "5 min",
-        "trailer_text": "This is the bit that entices you to read on ...",
-        "link": "blog-post",
+        "when_published": "[no publication date]",
+        "reading_time": "[no reading time]",
+        "trailer_text": "[no trailer text]",
+        "link": "[no link]",
     }
 )
 post_vars = OD(
     {
         "title": "No title provided in this enviroment",
-        "content": """<h3 class="mt-5 mb-3">This is a Heading!</h3>
-        <p>It looks like no content was provided for this post by the code that generated it.</p>
-        <p>This is test content, to show will look like.  Body text paragraphs not identified as code will be set
-        in this font and spacing. Both bold and italic emphasis should work. For some reason it's easier to write code
-        than this kind of boilerplate text, but even a coder must suffer for her art. In these trying times one can more
-        easily engage a copywriter than to do this kind of writing oneself.</p>\n
-        <p>The rest of this page shows the 'state of the art' in HTML production.</p>\n""",
+        "content": """<h3 class="mt-5 mb-3">Warning!</h3>
+        <p>No content was provided in this environment.</p>\n""",
         "when_published": item_vars.when_published,
     }
 )
@@ -78,17 +74,21 @@ def delete_page(id):
     return redirect("/articles/list")
 
 
+#
+# What's supposed to be the difference between a post and an item?
+# Is either of them the same thing as an article? Sloppy work here.
+#
 @app.route("/blog/<id>")
 def blog_page_view(id):
     template = env.get_template("blog-post.html")
-    envars = OD({"post": load_content(id), "item": item_vars})
+    envars = OD({"post": WebPage.objects(documentId=id).to_json(), "item": item_vars})
     result = template.render(**envars)
     return result
 
 
 def load_content(id):
     doc = SQLDoc(id)
-    record = doc.load()
+    record = WebPage.objects(document_id=id)
     return OD(
         {
             "content": record.html,
@@ -108,16 +108,17 @@ def serve_asset(path):
 
 @app.route("/api/v1/articles")
 def articles():
-    d = Documents()
+    d = WebPage.objects.all()
     return Response(
-        json.dumps(list(d.list(fields="id, documentId, title, slug"))),
+        json.dumps([(r.id, r.documentId, r.title, r.slug) for r in d]),
         mimetype="application/json",
     )
 
 
 @app.route("/articles/list")
 def list_articles():
-    data = Documents().list(fields="id, documentID, title, slug")
+    data = WebPage.objects.all()
+    data = [(r.id, r.documentId, r.title, r.slug) for r in data]
     tbl_template = env.get_template("list_articles.html")
     content = tbl_template.render(data=data)
     template = env.get_template("blog-post.html")
