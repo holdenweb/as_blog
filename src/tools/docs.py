@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import pickle
@@ -11,6 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from hu import ObjectDict as OD
 from mongoengine import connect
+from mongoengine import DateTimeField
 from mongoengine import DictField
 from mongoengine import disconnect
 from mongoengine import Document
@@ -36,7 +38,9 @@ def debug(debug_class, *arg, **kw):
 
 class WebPage(Document):
     documentId: str = StringField(required=True, primary_key=True)
-    json: str = DictField(required=False)
+    last_pulled: datetime.datetime = DateTimeField(required=False)
+    json: dict = StringField(required=False)
+    last_loaded: datetime.datetime = DateTimeField(required=False)
     html: str = StringField(required=False)
     title: str = StringField(required=False)
     slug: str = StringField(required=False)
@@ -73,9 +77,9 @@ def authenticate():
     return creds
 
 
-def pull(args=sys.argv):
+def pull(args=sys.argv[1:]):
     web_db = connect("WebDB")
-    documentId = args[1]
+    documentId = args[0]
     print("Pulling", documentId)
     creds = authenticate()
     service = build("docs", "v1", credentials=creds)
@@ -89,8 +93,15 @@ def pull(args=sys.argv):
         else "+++ NO TITLE! +++"
     )
     slug = slugify(title)
-    record = WebPage(documentId=documentId, title=title, json=document, slug=slug)
+    record = WebPage(
+        documentId=documentId,
+        last_pulled=datetime.datetime.now(),
+        title=title,
+        json=json.dumps(document),
+        slug=slug,
+    )
     record.save()
+    web_db.disconnect()
 
 
 # if __name__ == "__main__":

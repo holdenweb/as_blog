@@ -134,9 +134,7 @@ def render_code_chunk(chunk: List[str]) -> None:
     snippet_names.append(article)
     pos = len(snippets)
     if seq != pos:
-        sys.exit(
-            f"Snippet {seq} appears in position {pos}"
-        )  # print(f"{article}, {seq}", file=sys.stderr)
+        sys.exit(f"Snippet {seq} appears in position {pos}")
     return result
 
 
@@ -233,7 +231,8 @@ def render_paragraphs(paragraph_stream):
     chunk = []
     fragments = []
     for para in paragraph_stream:
-        p_type, elements = para_type(para, len(chunk) != 0)
+        in_chunk = len(chunk) != 0
+        p_type, elements = para_type(para, in_chunk)
         #
         # Special case: code paragraphs are accumulated
         # into a chunk, which becomes a single paragraph
@@ -271,8 +270,7 @@ def main(args=sys.argv[1:]) -> str:
     record = WebPage.objects(documentId=documentId).first()
     if not record:
         sys.exit("You need to pull the document before you can load it.")
-    document = OD(record.json)
-    assert "footnotes" in document
+    document = OD(json.loads(record.json))
     #
     # Render the document body.
     #
@@ -309,10 +307,12 @@ def main(args=sys.argv[1:]) -> str:
                 # Copy the source lines preceding the snippet
                 for i in range(pos, start):
                     out_file.write(in_lines[i])
+                    out_file.write("\n")
                 pos = end
                 # Copy out the snippet
                 for line in chunk:
-                    fragments.append(line)
+                    out_file.write(line)
+                    out_file.write("\n")
             for line in in_lines[pos:-1]:
                 out_file.write(line)
     #
@@ -371,7 +371,7 @@ def showjson(args: List[str] = sys.argv[1:]) -> None:
     """
     web_db = connect("WebDB")
     document_id: str = args[0]
-    record = WebPage.objects.get(id=document_id)
+    record = WebPage.objects.get(documentId=document_id)
     print(record.json)
 
 

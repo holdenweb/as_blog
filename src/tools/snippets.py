@@ -16,20 +16,20 @@ class Snippet:
 
 
 def process_line(
-    l_no: int, line: str, snippet: Optional[int], ranges: List[Tuple[int, int]]
+    l_no: int, line: str, sn_start: Optional[int], ranges: List[Tuple[int, int]]
 ) -> Optional[int]:
     start = line.startswith(SN_PREFIX)
     end = line.startswith(SN_CLOSE)
     if start:  # A new snippet starts here
-        if snippet is not None:  # If we are currently in a snippet
-            ranges.append((snippet, l_no))  # ... then add it to the ranges
-        snippet = l_no
+        if sn_start is not None:  # If we are currently in a snippet
+            ranges.append((sn_start, l_no))  # ... then add it to the ranges
+        sn_start = l_no  # Mark start of snippet
     elif end:
-        if snippet is None:
+        if sn_start is None:  # Snippets must start before they can end
             raise ValueError(f"Snippet ends without start on line {l_no+1}")
-        ranges.append((snippet, l_no + 1))
-        snippet = None
-    return snippet
+        ranges.append((sn_start, l_no + 1))
+        sn_start = None
+    return sn_start
 
 
 def snippet_ranges(lines: List[str]):

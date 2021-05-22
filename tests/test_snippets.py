@@ -14,3 +14,18 @@ Line 1 is not part of a snippet
     assert r == [(1, 2), (2, 4)]
     sn = snippets(lines)
     assert all(s.lines == [] for s in sn)
+
+
+def test_single_line_snippets():
+    lines = """\
+Line 1 is not part of a snippet
+# snippet prefix-1
+The single line of snippet 1
+# snippet prefix-2
+The single line of snippet 2
+# end snippet
+""".splitlines()
+    r = snippet_ranges(lines)
+    assert r == [(1, 3), (3, 6)]
+    sn = snippets(lines)
+    assert all(len(s.lines) == 1 for s in sn)

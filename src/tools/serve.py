@@ -1,33 +1,43 @@
+import datetime
 import json
 import sys
-from datetime import datetime
+from urllib.parse import urlparse
 
+from docs import pull
 from docs import WebPage
+from flask import flash
 from flask import Flask
 from flask import redirect
+from flask import render_template
 from flask import Response
 from flask import send_from_directory
+from flask import url_for
+from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
+from flask_wtf.csrf import CSRFProtect
 from hu import ObjectDict as OD
 from jinja2 import ChoiceLoader
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
+from jinja2 import PackageLoader
 from mongoengine import connect
 from wtforms import StringField
 from wtforms.validators import DataRequired
 
-env = Environment(
-    loader=ChoiceLoader(
-        [FileSystemLoader("/Users/sholden/Projects/Python/blogAlexSteve/web")]
-    )
+my_loader = ChoiceLoader(
+    [
+        FileSystemLoader("/Users/sholden/Projects/Python/blogAlexSteve/web"),
+        PackageLoader("flask_bootstrap", package_path="templates", encoding="utf-8"),
+    ]
 )
 
 web_db = connect("WebDB")
 
 app = Flask(__name__)
-
-# Set the secret key to some random bytes. Keep this really secret!
 app.config["SECRET_KEY"] = b'_5#y2L"F4Q8z\n\xec]/'
+app.jinja_loader = my_loader
+csrf = CSRFProtect(app)
+bstrap = Bootstrap(app)
 
 item_vars = OD(
     {
@@ -69,8 +79,7 @@ def show_page(name):
 
 @app.route("/blog/<id>/delete")
 def delete_page(id):
-    doc = SQLDoc(id)
-    doc.delete()
+    WebPage.objects(documentId=id).delete()
     return redirect("/articles/list")
 
 
@@ -81,21 +90,19 @@ def delete_page(id):
 @app.route("/blog/<id>")
 def blog_page_view(id):
     template = env.get_template("blog-post.html")
-    envars = OD({"post": WebPage.objects(documentId=id).to_json(), "item": item_vars})
-    result = template.render(**envars)
-    return result
-
-
-def load_content(id):
-    doc = SQLDoc(id)
-    record = WebPage.objects(document_id=id)
-    return OD(
+    web_page = WebPage.objects(documentId=id).first()
+    envars = OD(
         {
-            "content": record.html,
-            "document": OD(json.loads(record.json)),
-            "title": record.title,
+            "post": {
+                "title": "There's a Title!",
+                "when_published": "Just this minute!",
+                "content": web_page.html,
+            },
+            "item": item_vars,
         }
     )
+    result = template.render(**envars)
+    return result
 
 
 @app.route("/assets/<path:path>")
@@ -128,20 +135,55 @@ def list_articles():
 
 
 class MyForm(FlaskForm):
-    name = StringField("name", validators=[DataRequired()])
-    doc_id = StringField("doc_id", validators=[DataRequired()])
+    documentId = StringField(
+        "Document ID/URL", validators=[DataRequired()], id="DropTarget1"
+    )
 
 
-@app.route("/forms/test", methods=["GET", "POST"])
+@app.route("/document/pull/", methods=["GET", "POST"])
 def form_test():
-    template = env.get_template("test-form.html")
-    my_form = MyForm()
-    content = template.render(form=my_form)
-    print(content)
-    template = env.get_template("blog-post.html")
-    envars = OD({"post": content, "item": item_vars})  # load_content(id),
-    result = template.render(**envars)
+    form = MyForm()
+    if form.validate_on_submit():
+        input_string = form.documentId.data
+        if len(input_string) != 44:
+            try:
+                up = urlparse(input_string)
+                if up.scheme != "https":
+                    raise ValueError()
+                words = up.path.split("/")
+                for word in words:
+                    if len(word) == 44:
+                        input_string = word
+                        break
+                else:
+                    raise ValueError()
+                pull([input_string])
+                load([input_string])
+                return redirect(url_for(".list_articles"))
+            except Exception:
+                pass
+        form.errors["documentId"] = [f"{input_string!r} isn't a document Id or URL"]
+    content = render_template("test-form.html", **{"form": form})
+    envars = OD(
+        {
+            "post": {"content": content, "title": "Yes, there IS a title!"},
+            "item": item_vars,
+        }
+    )  # load_content(id),
+    result = render_template("blog-post.html", **envars)
     return result
 
 
-print("Flask app imported")
+@app.route("/dammit")
+def dammit():
+    return render_template("dammit.html", form=MyForm())
+
+
+if __name__ == "__main__":
+    import os
+
+    if "WINGDB_ACTIVE" in os.environ:
+        app.debug = False
+    app.run(use_reloader=True)
+else:
+    print("Flask app imported")

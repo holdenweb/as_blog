@@ -18,11 +18,11 @@ google-auth-oauthlib = "^0.4.2"
 Flask = "^1.1.2"
 id = "^0.1.0"
 Flask-WTF = "^0.14.3"
-Flask-Bootstrap = "^3.3.7"
 python-slugify = "^4.0.1"
 mongoengine = "^0.22.1"
 python-dotenv = "^0.15.0"
 mongomock = "^3.22.1"
+Flask-Bootstrap = "^3.3.7"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.20"
