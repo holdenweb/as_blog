@@ -1,14 +1,39 @@
-{% extends "bootstrap/base.html" %}
-{% import 'bootstrap/wtf.html' as wtf %}
+{% extends "blog-post.html" %}
 
-<form  method="POST">
-  {{ form.csrf_token }}
-  {{ form.errors }}
-  <div class="form-group">
-      <div class="form-field" placeholder="URL or document Id" size="80">
-        {{ form.documentId.label }} {{ form.documentId(size=50) }}
-      </div>
+{% block content %}
+<h2>This is a test form</h2>
+<div class="container">
+  <div class="row">
+    <div class="col-3">col3</div>
+    <div class="col-6">
+      <form  method="POST">
+        {{ form.csrf_token }}
+        <div class="form-group">
+            <div class="form-field" placeholder="URL or document Id" size="33">
+              {{ form.documentId.label }} {{ form.documentId(size=33) }}
+              {% if form.documentId.errors %}
+                {% for error in form.documentId.errors %}
+                {{ error }}<br/>
+                {% endfor %}
+              {% endif %}
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+    <div class="col-3">col-3</div>
   </div>
-  <button type="submit" class="btn btn-primary">Submit</button>
-  {{  wtf.quickform(form) }}
-</form>
+</div>
+<div class="container">
+  <div class="row">
+    <div class="col">col</div>
+    <div class="col">col</div>
+    <div class="col">col</div>
+    <div class="col">col</div>
+  </div>
+  <div class="row">
+    <div class="col-8">col-8</div>
+    <div class="col-4">col-4</div>
+  </div>
+</div>
+{% endblock content %}

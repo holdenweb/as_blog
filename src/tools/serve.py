@@ -17,12 +17,12 @@ from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
 from hu import ObjectDict as OD
 from jinja2 import ChoiceLoader
-from jinja2 import Environment
 from jinja2 import FileSystemLoader
 from jinja2 import PackageLoader
 from mongoengine import connect
 from wtforms import StringField
 from wtforms.validators import DataRequired
+from wtforms.validators import ValidationError
 
 my_loader = ChoiceLoader(
     [
@@ -126,11 +126,8 @@ def articles():
 def list_articles():
     data = WebPage.objects.all()
     data = [(r.id, r.documentId, r.title, r.slug) for r in data]
-    tbl_template = env.get_template("list_articles.html")
-    content = tbl_template.render(data=data)
-    template = env.get_template("blog-post.html")
-    envars = OD({"post": {"title": "List of Articles", "content": content}})
-    result = template.render(**envars)
+    envars = OD({"post": {"title": "List of Articles"}})
+    result = render_template("list_articles.html", data=data, **envars)
     return result
 
 
@@ -139,44 +136,49 @@ class MyForm(FlaskForm):
         "Document ID/URL", validators=[DataRequired()], id="DropTarget1"
     )
 
+    def validate_documentId(form, field):
+        """
+        This input should either be the 33-character Id of a document,
+        or alternatively the URL of a document, which is validated
+        by parsing and looking for a 33-character element in the path.
+        """
+        ID_LENGTH = 33
+        if len(field.data) == ID_LENGTH:
+            return  # Good enough!
+        try:
+            up = urlparse(field.data)
+        except Exception:
+            raise ValidationError("Not a valid document URL or Id [3]")
+        if up.scheme != "https":
+            raise ValidationError("Not a valid document URL or Id [1]")
+        words = up.path.split("/")
+        for word in words:
+            if len(word) == ID_LENGTH:
+                field.data = word
+                return
+        else:
+            raise ValidationError("Not a valid document URL or Id [2]")
+
 
 @app.route("/document/pull/", methods=["GET", "POST"])
-def form_test():
+def document_pull():
     form = MyForm()
     if form.validate_on_submit():
         input_string = form.documentId.data
-        if len(input_string) != 44:
-            try:
-                up = urlparse(input_string)
-                if up.scheme != "https":
-                    raise ValueError()
-                words = up.path.split("/")
-                for word in words:
-                    if len(word) == 44:
-                        input_string = word
-                        break
-                else:
-                    raise ValueError()
-                pull([input_string])
-                load([input_string])
-                return redirect(url_for(".list_articles"))
-            except Exception:
-                pass
-        form.errors["documentId"] = [f"{input_string!r} isn't a document Id or URL"]
-    content = render_template("test-form.html", **{"form": form})
+        pull([input_string])
+        load([input_string])
+        return redirect(url_for(".list_articles"))
     envars = OD(
         {
-            "post": {"content": content, "title": "Yes, there IS a title!"},
+            "post": {
+                "content": "CONTENT",
+                "title": "Yes, there IS a title!",
+            },
             "item": item_vars,
         }
     )  # load_content(id),
-    result = render_template("blog-post.html", **envars)
+    result = render_template("test-form.html", form=form, **envars)
     return result
-
-
-@app.route("/dammit")
-def dammit():
-    return render_template("dammit.html", form=MyForm())
 
 
 if __name__ == "__main__":
